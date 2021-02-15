@@ -74,6 +74,10 @@ public class Screen extends Canvas {
         g.drawImage(image, 0, 0, null);
     }
 
+    public void cursor(double re, double im) {
+        
+    }
+
     public int toPx(double minRe, double maxRe, double re) {
         return (int) (((re - minRe) * width) / Math.abs(maxRe - minRe));
     }
