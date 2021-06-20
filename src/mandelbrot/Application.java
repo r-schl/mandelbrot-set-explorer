@@ -7,6 +7,9 @@ import javax.swing.text.DefaultFormatter;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.awt.*;
+import javax.swing.*;
+import java.awt.image.*;
 
 import static javax.swing.BorderFactory.createEtchedBorder;
 import static javax.swing.BorderFactory.createTitledBorder;
@@ -27,13 +30,27 @@ public class Application implements MouseListener {
     int iterations;
     double cursorRe = 0;
     double cursorIm = 0;
-    View view;
-    Screen screen;
+
+    int width;
+    int height;
+
+    public double minRe = -1.5;
+    public double minIm = -1.5;
+    public double maxRe = 1.5;
+    public double maxIm = 1.5;
+
+    ComplexPlane plane;
     Mandelbrot mand;
     Orbit orbit;
+
     boolean isReloadable = true;
 
+     // Render stuff
+     private BufferStrategy bufferStrategy;
+     private Graphics2D g;
+
     // UI-Components
+    Canvas canvas;
     JFrame frame;
     ImageButton btnZoomIn;
     ImageButton btnZoomOut;
@@ -56,18 +73,21 @@ public class Application implements MouseListener {
     JProgressBar progressBar;
 
     public Application(int width, int height) {
-        screen = new Screen(width, height);
+        this.width = width;
+        this.height = height;
         SwingUtilities.invokeLater(this::init);
     }
 
     private void reset() {
-        mand = new Mandelbrot(screen);
+
+        mand = new Mandelbrot();
         orbit = new Orbit();
-        view = new View();
+        plane = new ComplexPlane();
+
         cursorRe = DEFAULT_CURSOR_RE;
         cursorIm = DEFAULT_CURSOR_IM;
         putIterations(DEFAULT_ITERATIONS);
-        putView(view);
+        putView(-1.5, -1.5, 1.5, 1.5);
         putCursor(cursorRe, cursorIm);
         cmbPresets.setSelectedIndex(1);
     }
@@ -91,7 +111,7 @@ public class Application implements MouseListener {
             }
         });
         frame.setResizable(false);
-        frame.setSize(screen.width + SIDEBAR_WIDTH, screen.height + STATUS_BAR_HEIGHT);
+        frame.setSize(width + SIDEBAR_WIDTH, height + STATUS_BAR_HEIGHT);
         frame.getContentPane().setLayout(new BorderLayout());
         frame.setFocusable(true);
 
@@ -124,45 +144,46 @@ public class Application implements MouseListener {
 
         JPanel pnlStatus = new JPanel();
         pnlStatus.setLayout(new BorderLayout());
-        pnlStatus.setPreferredSize(new Dimension(screen.width, STATUS_BAR_HEIGHT));
-        pnlStatus.setMaximumSize(new Dimension(screen.width, STATUS_BAR_HEIGHT));
-        pnlStatus.setMaximumSize(new Dimension(screen.width, STATUS_BAR_HEIGHT));
+        pnlStatus.setPreferredSize(new Dimension(width, STATUS_BAR_HEIGHT));
+        pnlStatus.setMaximumSize(new Dimension(width, STATUS_BAR_HEIGHT));
+        pnlStatus.setMaximumSize(new Dimension(width, STATUS_BAR_HEIGHT));
         //pnlStatus.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.yellow));
         frame.add(pnlStatus, BorderLayout.SOUTH);
 
         JPanel pnlDraw = new JPanel();
         pnlDraw.setLayout(new BorderLayout());
-        pnlDraw.setPreferredSize(new Dimension(screen.width, screen.height));
-        pnlDraw.setMaximumSize(new Dimension(screen.width, screen.height));
-        pnlDraw.setMaximumSize(new Dimension(screen.width, screen.height));
+        pnlDraw.setPreferredSize(new Dimension(width, height));
+        pnlDraw.setMaximumSize(new Dimension(width, height));
+        pnlDraw.setMaximumSize(new Dimension(width, height));
         pnlMain.add(pnlDraw);
 
         JLayeredPane lpDrawPane = new JLayeredPane();
         pnlDraw.add(lpDrawPane);
 
-        screen.setPreferredSize(new Dimension(screen.width, screen.height));
-        screen.setMaximumSize(new Dimension(screen.width, screen.height));
-        screen.setMaximumSize(new Dimension(screen.width, screen.height));
-        screen.setBounds(0, 0, screen.width, screen.height);
-        screen.setBackground(Color.WHITE);
-        screen.addMouseListener(this);
-        lpDrawPane.add(screen, Integer.valueOf(0));
+        canvas = new Canvas();
+        canvas.setPreferredSize(new Dimension(width, height));
+        canvas.setMaximumSize(new Dimension(width, height));
+        canvas.setMaximumSize(new Dimension(width, height));
+        canvas.setBounds(0, 0, width, height);
+        canvas.setBackground(Color.WHITE);
+        canvas.addMouseListener(this);
+        lpDrawPane.add(canvas, Integer.valueOf(0));
 
         btnZoomIn = new ImageButton("res/plus.png");
-        btnZoomIn.setBounds(screen.width - BTN_HEIGHT - 10, 5, BTN_HEIGHT, BTN_HEIGHT);
+        btnZoomIn.setBounds(width - BTN_HEIGHT - 10, 5, BTN_HEIGHT, BTN_HEIGHT);
         btnZoomIn.addActionListener(e -> onZoomIn());
         lpDrawPane.add(btnZoomIn, Integer.valueOf(1));
 
         btnZoomOut = new ImageButton("res/minus.png");
-        btnZoomOut.setBounds(screen.width - BTN_HEIGHT - 10, BTN_HEIGHT + 10, BTN_HEIGHT, BTN_HEIGHT);
+        btnZoomOut.setBounds(width - BTN_HEIGHT - 10, BTN_HEIGHT + 10, BTN_HEIGHT, BTN_HEIGHT);
         btnZoomOut.addActionListener(e -> onZoomOut());
         lpDrawPane.add(btnZoomOut, Integer.valueOf(1));
 
         pnlSidebar = new JPanel();
         pnlSidebar.setLayout(new BoxLayout(pnlSidebar, BoxLayout.Y_AXIS));
-        pnlSidebar.setPreferredSize(new Dimension(SIDEBAR_WIDTH, screen.height));
-        pnlSidebar.setMaximumSize(new Dimension(SIDEBAR_WIDTH, screen.height));
-        pnlSidebar.setMinimumSize(new Dimension(SIDEBAR_WIDTH, screen.height));
+        pnlSidebar.setPreferredSize(new Dimension(SIDEBAR_WIDTH, height));
+        pnlSidebar.setMaximumSize(new Dimension(SIDEBAR_WIDTH, height));
+        pnlSidebar.setMinimumSize(new Dimension(SIDEBAR_WIDTH, height));
         EmptyBorder eBorder = new EmptyBorder(10, 10, 10, 10);
         pnlSidebar.setBorder(eBorder);
         pnlMain.add(pnlSidebar);
@@ -197,22 +218,22 @@ public class Application implements MouseListener {
 
 
         txfMinRe = new JTextField();
-        txfMinRe.setBorder(createTitledBorder(createEtchedBorder(), "Re-Min", TitledBorder.CENTER, TitledBorder.LEFT, screen.getFont()));
+        txfMinRe.setBorder(createTitledBorder(createEtchedBorder(), "Re-Min", TitledBorder.CENTER, TitledBorder.LEFT, canvas.getFont()));
         txfMinRe.getDocument().addDocumentListener((SimpleDocumentListener) e -> onViewChange());
         pnlMinMax.add(txfMinRe);
 
         txfMaxRe = new JTextField();
-        txfMaxRe.setBorder(createTitledBorder(createEtchedBorder(), "Re-Max", TitledBorder.CENTER, TitledBorder.LEFT, screen.getFont()));
+        txfMaxRe.setBorder(createTitledBorder(createEtchedBorder(), "Re-Max", TitledBorder.CENTER, TitledBorder.LEFT, canvas.getFont()));
         txfMaxRe.getDocument().addDocumentListener((SimpleDocumentListener) e -> onViewChange());
         pnlMinMax.add(txfMaxRe);
 
         txfMinIm = new JTextField();
-        txfMinIm.setBorder(createTitledBorder(createEtchedBorder(), "Im-Min", TitledBorder.CENTER, TitledBorder.LEFT, screen.getFont()));
+        txfMinIm.setBorder(createTitledBorder(createEtchedBorder(), "Im-Min", TitledBorder.CENTER, TitledBorder.LEFT, canvas.getFont()));
         txfMinIm.getDocument().addDocumentListener((SimpleDocumentListener) e -> onViewChange());
         pnlMinMax.add(txfMinIm);
 
         txfMaxIm = new JTextField();
-        txfMaxIm.setBorder(createTitledBorder(createEtchedBorder(), "Im-Max", TitledBorder.CENTER, TitledBorder.LEFT, screen.getFont()));
+        txfMaxIm.setBorder(createTitledBorder(createEtchedBorder(), "Im-Max", TitledBorder.CENTER, TitledBorder.LEFT, canvas.getFont()));
         txfMaxIm.getDocument().addDocumentListener((SimpleDocumentListener) e -> onViewChange());
         pnlMinMax.add(txfMaxIm);
 
@@ -301,18 +322,60 @@ public class Application implements MouseListener {
     }
 
     private void draw() {
-        screen.prepare();
-        // draw in here
-        if (chkDrawSet.isSelected()) screen.mandelbrot(mand);
-        if (chkDrawOrbit.isSelected()) screen.orbit(orbit, view);
-        // end of drawing
-        screen.finish();
+        if (!SwingUtilities.isEventDispatchThread())
+            new Exception("Not EventDispatchThread").printStackTrace();
+        // at this point we are on the Swing UI Thread
+        bufferStrategy = canvas.getBufferStrategy();
+        if (bufferStrategy == null) {
+            canvas.createBufferStrategy(2);
+            draw();
+            return;
+        }
+
+        BufferedImage image =  new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+        Runnable show = () -> {
+            Graphics graphics = bufferStrategy.getDrawGraphics();
+            g = (Graphics2D) graphics;
+            g.clearRect(0, 0, width, height);
+            RenderingHints rh = new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            g.setRenderingHints(rh);
+            g.drawImage(image, 0, 0, null);
+            g.dispose();
+            bufferStrategy.show();
+        };
+
+        boolean drawMand = chkDrawSet.isSelected();
+        boolean drawOrbit = chkDrawOrbit.isSelected();
+
+
+        mand.set(width, height, minRe, minIm, maxRe, maxIm, iterations);
+        orbit.set(width, height, cursorRe, cursorIm, minRe, minIm, maxRe, maxIm, iterations);
+        
+        if (drawMand && drawOrbit) mand.render(image, () -> orbit.render(image, show));
+        else if (drawOrbit) orbit.render(image, show);
+        else if (drawMand) mand.render(image, show);
+        else show.run();
+
+
+
+        /* if (drawMand && drawOrbit) plane.next(mand.next(orbit.next(show)));
+        else if (drawOrbit) plane.next(orbit.next(show));
+        else if (drawMand) plane.next(mand.next(show));
+ */
+        //plane.render(image, cursorRe, cursorIm, minRe, minIm, maxRe, maxIm, iterations);
+
+      
+        ////////// End of drawing
+        
     }
 
     private void calc() {
         // Refresh if needed.
-        if (chkDrawSet.isSelected()) mand.reload(view, iterations, progressBar, this::reload);
-        if (chkDrawOrbit.isSelected()) orbit.reload(cursorRe, cursorIm, iterations, this::reload);
+       //  plane.reload(minRe, minIm, maxRe, maxIm);
+        /* if (chkDrawSet.isSelected()) mand.reload(minRe, minIm, maxRe, maxIm, iterations, progressBar, this::reload);
+        if (chkDrawOrbit.isSelected()) orbit.reload(minRe, minIm, maxRe, maxIm, cursorRe, cursorIm, iterations, this::reload); */
     }
 
     private void onExit() {
@@ -321,15 +384,27 @@ public class Application implements MouseListener {
 
     private void onZoomIn() {
         cmbPresets.setSelectedIndex(0);
-        view.zoom(cursorRe, cursorIm, 2);
-        putView(view);
+        double r = 2;
+        double rangeRe = Math.abs(maxRe - minRe);
+        double rangeIm = Math.abs(maxIm - minIm);
+        double newMinRe = -rangeRe / (2 * r) + cursorRe;
+        double newMinIm = -rangeIm / (2 * r) + cursorIm;
+        double newMaxRe = rangeRe / (2 * r) + cursorRe;
+        double newMaxIm = rangeIm / (2 * r) + cursorIm;
+        putView(newMinRe, newMinIm, newMaxRe, newMaxIm);
         reload();
     }
 
     private void onZoomOut() {
         cmbPresets.setSelectedIndex(0);
-        view.zoom(cursorRe, cursorIm, 0.5);
-        putView(view);
+        double r = 0.5;
+        double rangeRe = Math.abs(maxRe - minRe);
+        double rangeIm = Math.abs(maxIm - minIm);
+        double newMinRe = -rangeRe / (2 * r) + cursorRe;
+        double newMinIm = -rangeIm / (2 * r) + cursorIm;
+        double newMaxRe = rangeRe / (2 * r) + cursorRe;
+        double newMaxIm = rangeIm / (2 * r) + cursorIm;
+        putView(newMinRe, newMinIm, newMaxRe, newMaxIm);
         reload();
     }
 
@@ -352,10 +427,22 @@ public class Application implements MouseListener {
     }
     
     private void onViewChange() {
-        view.readMinRe(txfMinRe.getText());
-        view.readMinIm(txfMinIm.getText());
-        view.readMaxRe(txfMaxRe.getText());
-        view.readMaxIm(txfMaxIm.getText());
+        try {
+            this.minRe = Double.parseDouble(txfMinRe.getText());
+        } catch (Exception ignored) {
+        }
+        try {
+            this.minIm = Double.parseDouble(txfMinIm.getText());
+        } catch (Exception ignored) {
+        }
+        try {
+            this.maxRe = Double.parseDouble(txfMaxRe.getText());
+        } catch (Exception ignored) {
+        }
+        try {
+            this.maxIm = Double.parseDouble(txfMaxIm.getText());
+        } catch (Exception ignored) {
+        }
         reload();
     }
 
@@ -370,12 +457,12 @@ public class Application implements MouseListener {
 
     private void onPresetChange() {
         int sel = cmbPresets.getSelectedIndex();
-        if (sel > 0) {
+        /* if (sel > 0) {
             if (sel == 1) view.set(View.DEFAULT);
             if (sel == 2) view.set(View.SEAHORSES);
             if (sel == 3) view.set(View.ELEFANTS);
             putView(view);
-        }
+        } */
         reload();
     }
 
@@ -392,16 +479,15 @@ public class Application implements MouseListener {
         isReloadable = true;
     }
 
-    private void putView(View view) {
-        View tView = new View(view);
+    private void putView(double minRe, double minIm, double maxRe, double maxIm) {
         isReloadable = false;
-        this.txfMinRe.setText(String.valueOf(tView.minRe));
+        this.txfMinRe.setText(String.valueOf(minRe));
         this.txfMinRe.setCaretPosition(0);
-        this.txfMinIm.setText(String.valueOf(tView.minIm));
+        this.txfMinIm.setText(String.valueOf(minIm));
         this.txfMinIm.setCaretPosition(0);
-        this.txfMaxRe.setText(String.valueOf(tView.maxRe));
+        this.txfMaxRe.setText(String.valueOf(maxRe));
         this.txfMaxRe.setCaretPosition(0);
-        this.txfMaxIm.setText(String.valueOf(tView.maxIm));
+        this.txfMaxIm.setText(String.valueOf(maxIm));
         this.txfMaxIm.setCaretPosition(0);
         isReloadable = true;
     }
@@ -415,14 +501,13 @@ public class Application implements MouseListener {
     @Override
     public void mouseClicked(MouseEvent e) {
         // TODO Auto-generated method stub
-
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
         if (e.getButton() == MouseEvent.BUTTON1) {
-            double x = view.toRe(screen.width, e.getX());
-            double y = view.toIm(screen.height, e.getY());
+            double x = plane.toRe(e.getX());
+            double y = plane.toIm(e.getY());
             this.putCursor(x, y);
             this.reload();
         }

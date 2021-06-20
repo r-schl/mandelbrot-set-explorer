@@ -26,9 +26,13 @@ public class Screen extends Canvas {
     private BufferStrategy bufferStrategy;
     private Graphics2D g;
 
+    BufferedImage image;
+
+
     public Screen(int width, int height) {
         this.width = width;
         this.height = height;
+        image =  new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
     }
 
     public void prepare() {
@@ -44,6 +48,7 @@ public class Screen extends Canvas {
         Graphics graphics = bufferStrategy.getDrawGraphics();
         g = (Graphics2D) graphics;
         RenderingHints rh = new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g.setRenderingHints(rh);
         g.clearRect(0, 0, width, height);
     }
@@ -58,20 +63,11 @@ public class Screen extends Canvas {
     }
 
     public void orbit(Orbit orbit, View v) {
-        double[] data = orbit.data;
-        if (data == null)
-            return;
-        g.setColor(ORBIT_COLOR);
-        g.setStroke(new BasicStroke(ORBIT_THICKNESS));
-        for (int i = 0; i < data.length - 2; i += 2) {
-            g.drawLine(toPx(v.minRe, v.maxRe, data[i]), toPy(v.minIm, v.maxIm, data[i + 1]), toPx(v.minRe, v.maxRe, data[i + 2]), toPy(v.minIm, v.maxIm, data[i + 3]));
-        }
+        //g.drawImage(orbit.onImage(image), 0, 0, null);
     }
 
     public void mandelbrot(Mandelbrot mand) {
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-        image.setRGB(0, 0, width, height, mand.data, 0, width);
-        g.drawImage(image, 0, 0, null);
+      //  g.drawImage(mand.onImage(image), 0, 0, null);
     }
 
     public void cursor(double re, double im) {
