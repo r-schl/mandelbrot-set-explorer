@@ -1,0 +1,518 @@
+package main;
+
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
+import javax.swing.plaf.ButtonUI;
+import javax.swing.text.*;
+import java.awt.image.*;
+import java.awt.Dialog.*;
+import java.awt.font.*;
+import java.util.*;
+
+import static javax.swing.BorderFactory.createEtchedBorder;
+import static javax.swing.BorderFactory.createTitledBorder;
+
+public class Main implements MouseListener {
+
+    // UI-Components
+    JPanel canvas;
+    JFrame frame;
+    JPanel pnlDraw;
+    ImageButton btnZoomIn;
+    JPanel pnlStatus;
+    ImageButton btnZoomOut;
+    // JPanel pnlMain;
+
+    JMenuBar mnBar;
+    JTextField txfCursorRe;
+    JTextField txfCursorIm;
+    FlowLayout frameFlowLayout;
+    JCheckBox chkFixAspectRatio;
+
+    JCheckBox chkDrawOrbit;
+    JCheckBox chkDrawSet;
+    JProgressBar progressBar;
+
+    final double DEFAULT_CURSOR_RE = 0;
+    final double DEFAULT_CURSOR_IM = 0;
+    final int DEFAULT_ITERATIONS = 700;
+    final int SIDEBAR_WIDTH = 240;
+    final int BTN_HEIGHT = 30;
+    final int PNL_1ROW_HEIGHT = 50;
+    final int STATUS_BAR_HEIGHT = 20;
+    final String WINDOW_TITLE = "Mandelbrot-Viewer";
+    final String VIEW_PNL_TITLE = "View-Window";
+    final String CURSOR_PNL_TITLE = "Cursor";
+
+    int frameWidth = 800;
+    int frameHeight = 800;
+
+    int canvasWidth;
+    int canvasHeight;
+
+    // Render stuff
+    private BufferStrategy bufferStrategy;
+    private Graphics2D g;
+
+    Mandelbrot mandelbrot;
+    BufferedImage image;
+    double cursorRe = 0;
+    double cursorIm = 0;
+
+    public static void main(String[] args) {
+        Main main = new Main();
+    }
+
+    boolean blockResizeEvent = false;
+
+    public Main() {
+        SwingUtilities.invokeLater(this::init);
+    }
+
+    private void init() {
+        // this method is executed on the Swing UI Thread
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException
+                | UnsupportedLookAndFeelException ex) {
+            ex.printStackTrace();
+        }
+
+        // this method is executed on the Swing UI Thread
+        frame = new JFrame(WINDOW_TITLE);
+        frame.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
+                System.exit(0);
+            }
+        });
+        frame.addComponentListener(new ComponentAdapter() {
+            public void componentResized(ComponentEvent evt) {
+                onWindowResized();
+            }
+        });
+        frame.setResizable(true);
+        frame.setMinimumSize(new Dimension(1080, 400));
+        frame.setFocusable(true);
+
+        // pnlMain = new JPanel();
+        // pnlMain.setLayout(new BorderLayout());
+        // frame.add(pnlMain);
+
+        ////// MENU BAR //////
+
+        mnBar = new JMenuBar();
+        mnBar.setLayout(new BorderLayout());
+        mnBar.setMaximumSize(new Dimension(500, 50));
+        mnBar.setBorder(new EmptyBorder(0, 0, 0, 0));
+        mnBar.setMinimumSize(new Dimension(500, 50));
+        mnBar.setPreferredSize(new Dimension(500, 50));
+
+        JPanel pnlMenuBar = new JPanel();
+        pnlMenuBar.setLayout(new BoxLayout(pnlMenuBar, BoxLayout.X_AXIS));
+        pnlMenuBar.setBackground(Color.WHITE);
+        pnlMenuBar.setBorder(new EmptyBorder(8, 8, 8, 8));
+        mnBar.add(pnlMenuBar, BorderLayout.CENTER);
+
+        JButton btnConfig = new JButton("Konfiguration");
+        pnlMenuBar.add(btnConfig);
+
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(14, 0)));
+
+        JButton btnView = new JButton("View-Window");
+        btnView.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onBtnViewClicked();
+            }
+        });
+        pnlMenuBar.add(btnView);
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(3, 0)));
+
+        chkFixAspectRatio = new JCheckBox("Seitenverhältnis sperren");
+        chkFixAspectRatio.addActionListener(e -> onCheckFixAspectRatioChange());
+        pnlMenuBar.add(chkFixAspectRatio);
+
+        /*
+         * JLabel lblPlaceHolder1 = new JLabel("  "); mnBar.add(lblPlaceHolder1);
+         */
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(3, 0)));
+
+        btnZoomIn = new ImageButton("res/plus.png");
+        btnZoomIn.setPreferredSize(new Dimension(21, 21));
+        btnZoomIn.setMinimumSize(new Dimension(21, 21));
+        btnZoomIn.setMaximumSize(new Dimension(21, 21));
+        btnZoomIn.addActionListener(e -> onZoomIn());
+        pnlMenuBar.add(btnZoomIn);
+
+        btnZoomOut = new ImageButton("res/minus.png");
+        btnZoomOut.setPreferredSize(new Dimension(21, 21));
+        btnZoomOut.setMinimumSize(new Dimension(21, 21));
+        btnZoomOut.setMaximumSize(new Dimension(21, 21));
+        btnZoomOut.addActionListener(e -> onZoomOut());
+        pnlMenuBar.add(btnZoomOut);
+
+        /*
+         * JLabel lblPlaceHolder3 = new JLabel("   "); mnBar.add(lblPlaceHolder3);
+         */
+
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(14, 0)));
+
+        chkDrawSet = new JCheckBox(" Mandelbrotmenge ");
+        // chkDrawSet.setBackground(Color.WHITE);
+        chkDrawSet.addActionListener(e -> onCheckSetChange());
+        pnlMenuBar.add(chkDrawSet);
+
+        chkDrawOrbit = new JCheckBox(" Orbit für c ");
+        // chkDrawOrbit.setBackground(Color.WHITE);
+        chkDrawOrbit.addActionListener(e -> onCheckOrbitChange());
+        pnlMenuBar.add(chkDrawOrbit);
+
+        /*
+         * JLabel lblPlaceHolder4 = new JLabel("     "); mnBar.add(lblPlaceHolder4);
+         */
+
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(14, 0)));
+
+        JPanel pnlCursor = new JPanel();
+        pnlCursor.setPreferredSize(new Dimension(222, 21));
+        pnlCursor.setMinimumSize(new Dimension(222, 21));
+        pnlCursor.setMaximumSize(new Dimension(222, 21));
+
+        JLabel lblCursorRe = new JLabel("Re(c) = ");
+        pnlCursor.add(lblCursorRe);
+        txfCursorRe = new JTextField(6);
+        txfCursorRe.setCaretPosition(0);
+
+        txfCursorRe.setBorder(new EmptyBorder(0, 0, 0, 0));
+        txfCursorRe.getDocument().addDocumentListener((SimpleDocumentListener) e -> onCursorChange());
+        pnlCursor.add(txfCursorRe);
+        JLabel lblCursorIm = new JLabel("  Im(c) = ");
+        pnlCursor.add(lblCursorIm);
+        txfCursorIm = new JTextField(6);
+
+        txfCursorIm.setCaretPosition(0);
+        txfCursorIm.setBorder(new EmptyBorder(0, 0, 0, 0));
+        txfCursorIm.getDocument().addDocumentListener((SimpleDocumentListener) e -> onCursorChange());
+        pnlCursor.add(txfCursorIm);
+
+        pnlMenuBar.add(pnlCursor);
+
+        /*
+         * JLabel lblPlaceHolder5 = new JLabel("   "); mnBar.add(lblPlaceHolder5);
+         */
+
+        frame.setJMenuBar(mnBar);
+
+        ////// STATUS BAR //////
+
+        pnlStatus = new JPanel();
+        pnlStatus.setLayout(new BorderLayout());
+        pnlStatus.setPreferredSize(new Dimension(Integer.MAX_VALUE, 5));
+        pnlStatus.setMaximumSize(new Dimension(Integer.MAX_VALUE, 5));
+        pnlStatus.setMinimumSize(new Dimension(Integer.MAX_VALUE, 4));
+
+        progressBar = new JProgressBar();
+        progressBar.setStringPainted(true);
+        progressBar.setBorderPainted(false);
+        progressBar.setBorder(new EmptyBorder(0, 0, 0, 0));
+        progressBar.setString("");
+        pnlStatus.add(progressBar, BorderLayout.CENTER);
+        mnBar.add(pnlStatus, BorderLayout.PAGE_END);
+
+        ////// CANVAS //////
+
+        canvas = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics og) {
+                super.paintComponent(og);
+                paintCanvas((Graphics2D) og);
+            }
+        };
+        canvas.setDoubleBuffered(true);
+        canvas.addMouseListener(this);
+        frame.add(canvas);
+
+        frame.setVisible(true);
+
+        this.canvasWidth = canvas.getWidth();
+        this.canvasHeight = canvas.getHeight();
+        double ar = (double) this.canvasWidth / this.canvasHeight;
+        this.mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, -1.5 * ar, -1.5, 1.5 * ar, 1.5, 40,
+                0xedd221, new int[] { 0xFFFFFF, 0x32a852});
+
+        putCursor(0, 0);
+        this.canvas.repaint();
+    }
+
+    private void resetImage() {
+        this.image = new BufferedImage(this.canvasWidth, this.canvasHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = this.image.createGraphics();
+        graphics.setColor(Color.WHITE);
+        graphics.fillRect(0, 0, this.image.getWidth(), this.image.getHeight());
+    }
+
+    private void paintCanvas(Graphics2D g) {
+        if (!SwingUtilities.isEventDispatchThread())
+            new Exception("Not EventDispatchThread").printStackTrace();
+        // At this point we are on the Swing UI Thread
+
+        // Configure rendering hints
+        RenderingHints rh = new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHints(rh);
+
+        if (this.image == null || this.image.getWidth() != this.canvasWidth
+                || this.image.getHeight() != this.canvasHeight)
+            resetImage();
+
+        g.setColor(Color.WHITE);
+        g.drawImage(image, 0, 0, null);
+        drawCursor(g);
+
+        if (this.chkDrawSet.isSelected()) {
+            if (this.mandelbrot.isBuilt()) {
+                image.setRGB(0, 0, canvasWidth, canvasHeight, this.mandelbrot.getImage(), 0, canvasWidth);
+                g.drawImage(image, 0, 0, null);
+                drawCursor(g);
+            } else if (!this.mandelbrot.isBuilding()) {
+                this.mandelbrot.build((double percentage) -> {
+                    this.progressBar.setValue((int) percentage);
+                }, () -> {
+                    if (this.mandelbrot.getImage() == null)
+                        return;
+                    this.canvas.repaint();
+                });
+            }
+        }
+
+    }
+
+    private void drawCursor2(Graphics2D g, int cursorWidth, int cursorHeight, int thickness) {
+        g.setColor(Color.red);
+        g.setStroke(new BasicStroke(thickness));
+        // Map the complex number c to pixel coordinates
+        int curPixX = (int) (((this.cursorRe - mandelbrot.getMinRe()) * canvasWidth)
+                / Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe()));
+        int curPixY = (int) (this.canvasHeight - (((-this.cursorIm + mandelbrot.getMinIm()) * this.canvasHeight)
+                / -Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm())));
+        // Draw the cursor cross
+        g.drawLine(curPixX - (cursorWidth / 2), curPixY - (cursorHeight / 2), curPixX + (cursorWidth / 2),
+                curPixY + (cursorHeight / 2));
+        g.drawLine(curPixX + (cursorWidth / 2), curPixY - (cursorHeight / 2), curPixX - (cursorWidth / 2),
+                curPixY + (cursorHeight / 2));
+    }
+
+    private void drawCursor(Graphics2D g) {
+        // Map the complex number c to pixel coordinates
+        int curPixX = (int) (((this.cursorRe - mandelbrot.getMinRe()) * canvasWidth)
+                / Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe()));
+        int curPixY = (int) (this.canvasHeight - (((-this.cursorIm + mandelbrot.getMinIm()) * this.canvasHeight)
+                / -Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm())));
+
+        // horizontal
+        if (curPixY < this.image.getHeight()) {
+            for (int x = 0; x < this.image.getWidth(); x++) {
+                int rgb = this.image.getRGB(x, curPixY);
+                int neg = (0xFFFFFF - rgb) | 0xFF000000;
+                g.setColor(new Color(neg));
+                g.fillRect(x, curPixY, 1, 1);
+            }
+        }
+        // vertical
+        if (curPixX < this.image.getWidth()) {
+            for (int y = 0; y < this.image.getHeight(); y++) {
+                int rgb = this.image.getRGB(curPixX, y);
+                int neg = (0xFFFFFF - rgb) | 0xFF000000;
+                g.setColor(new Color(neg));
+                g.fillRect(curPixX, y, 1, 1);
+            }
+        }
+
+    }
+
+    private void onWindowResized() {
+        this.mandelbrot.abort();
+        canvas.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        canvas.setPreferredSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        this.frame.revalidate();
+
+        if (this.chkFixAspectRatio.isSelected()) {
+            double rangeRe = Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe());
+            double rangeIm = Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm());
+            double aspectRatio = rangeRe / rangeIm;
+
+            this.canvasWidth = (int) this.canvas.getWidth();
+            this.canvasHeight = (int) this.canvas.getHeight();
+
+            double newCanvasWidth = this.canvasHeight * aspectRatio;
+            double newCanvasHeight = this.canvasHeight;
+
+            if (newCanvasWidth > this.canvasWidth) {
+                newCanvasWidth = this.canvasWidth;
+                newCanvasHeight = this.canvasWidth * (1.0d / aspectRatio);
+            }
+
+            this.canvasWidth = (int) newCanvasWidth;
+            this.canvasHeight = (int) newCanvasHeight;
+
+            mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(),
+                    mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), mandelbrot.getNMax(),
+                    mandelbrot.getColorInside(), mandelbrot.getGradient());
+
+            this.canvas.setSize(new Dimension(this.canvasWidth, this.canvasHeight));
+            this.canvas.setPreferredSize(new Dimension(this.canvasWidth, this.canvasHeight));
+            this.canvas.setMinimumSize(new Dimension(this.canvasWidth, this.canvasHeight));
+            this.canvas.setMaximumSize(new Dimension(this.canvasWidth, this.canvasHeight));
+        } else {
+
+            double widthFactor = canvas.getWidth() / (double) this.canvasWidth;
+            double heightFactor = canvas.getHeight() / (double) this.canvasHeight;
+
+            this.canvasWidth = (int) this.canvas.getWidth();
+            this.canvasHeight = (int) this.canvas.getHeight();
+
+            double maxReNew = mandelbrot.getMinRe()
+                    + Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe()) * widthFactor;
+            double minImNew = mandelbrot.getMaxIm()
+                    - Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm()) * heightFactor;
+
+            mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(), minImNew, maxReNew,
+                    mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient());
+        }
+        this.canvas.repaint();
+    }
+
+    private void onBtnViewClicked() {
+        try {
+            ViewDialog dialog = new ViewDialog(frame, mandelbrot, (zMinRe, zMinIm, zMaxRe, zMaxIm) -> {
+                mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, zMinRe, zMinIm, zMaxRe, zMaxIm,
+                        mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient());
+                this.chkFixAspectRatio.setSelected(true);
+                frame.getComponentListeners()[0].componentResized(null);
+            });
+            dialog.setModalityType(ModalityType.APPLICATION_MODAL);
+            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+            dialog.setVisible(true);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void onCheckFixAspectRatioChange() {
+        frame.getComponentListeners()[0].componentResized(null);
+        this.canvas.repaint();
+    }
+
+    private void onCheckSetChange() {
+        this.resetImage();
+        this.canvas.repaint();
+    }
+
+    private void onCheckOrbitChange() {
+        this.canvas.repaint();
+    }
+
+    private void onZoomIn() {
+        this.mandelbrot.abort();
+        this.mandelbrot = this.mandelbrot.getZoom(cursorRe, cursorIm, 2.0);
+        this.canvas.repaint();
+    }
+
+    private void onZoomOut() {
+        this.mandelbrot.abort();
+        this.mandelbrot = this.mandelbrot.getZoom(cursorRe, cursorIm, 0.5);
+        this.canvas.repaint();
+    }
+
+    private void onIterationChange() {
+
+    }
+
+    private void onExport() {
+
+    }
+
+    private void onExit() {
+        System.exit(0);
+    }
+
+    private void setViewWindow() {
+
+    }
+
+    boolean blockOnCursorChange = false;
+
+    private void onCursorChange() {
+        if (!blockOnCursorChange) {
+            try {
+                this.cursorRe = Double.parseDouble(this.txfCursorRe.getText());
+                this.cursorIm = Double.parseDouble(this.txfCursorIm.getText());
+            } catch (Exception e) {
+                // wrong input
+            }
+            this.canvas.repaint();
+        }
+    }
+
+    private void putCursor(double re, double im) {
+        blockOnCursorChange = true;
+        this.txfCursorRe.setText("" + re);
+        this.txfCursorRe.setCaretPosition(0);
+        this.txfCursorIm.setText("" + im);
+        this.txfCursorIm.setCaretPosition(0);
+        blockOnCursorChange = false;
+        onCursorChange();
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        // TODO Auto-generated method stub
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        if (e.getButton() == MouseEvent.BUTTON1) {
+
+            double zOriginRe = mandelbrot.getMinRe();
+            double zOriginIm = mandelbrot.getMaxIm();
+            double s = Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe()) / (double) this.canvasWidth;
+            double cRe = zOriginRe + s * e.getX();
+            double cIm = zOriginIm - s * e.getY();
+
+            /*
+             * double re = (e.getX() * Math.abs(this.mandelbrot.getMaxRe() -
+             * this.mandelbrot.getMinRe())) / width + this.mandelbrot.getMinRe(); double im
+             * = ((height - e.getY()) * Math.abs(this.mandelbrot.getMaxIm() -
+             * this.mandelbrot.getMinIm())) / height + this.mandelbrot.getMinIm();
+             */
+            this.putCursor(cRe, cIm);
+        }
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @FunctionalInterface
+    interface FourDoubleRunnable {
+        void run(double v1, double v2, double v3, double v4);
+    }
+}
