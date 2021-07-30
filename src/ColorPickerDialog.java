@@ -1,15 +1,15 @@
-package main;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
-import javax.swing.border.*;
-
 import static javax.swing.BorderFactory.createEtchedBorder;
-import static javax.swing.BorderFactory.createTitledBorder;
 
-import main.Main.Executable;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Toolkit;
+
+import javax.swing.JButton;
+import javax.swing.JColorChooser;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
 
 public class ColorPickerDialog extends JDialog {
 

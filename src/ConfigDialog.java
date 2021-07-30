@@ -1,4 +1,4 @@
-package main;
+
 
 import javax.swing.*;
 import java.awt.*;
@@ -7,8 +7,6 @@ import javax.swing.border.*;
 
 import static javax.swing.BorderFactory.createEtchedBorder;
 import static javax.swing.BorderFactory.createTitledBorder;
-
-import main.Main.TwoIntAndIntArrRunnable;
 
 public class ConfigDialog extends JDialog {
 
@@ -28,7 +26,7 @@ public class ConfigDialog extends JDialog {
         JButton[] btnsColorGradient;
         JPanel[] pnlsColorGradient;
 
-        public ConfigDialog(JFrame frame, Mandelbrot mandelbrot, TwoIntAndIntArrRunnable onConfirm) {
+        public ConfigDialog(JFrame frame, Mandelbrot mandelbrot, TwoIntAndIntArrExecutable onConfirm) {
                 super(frame, true);
 
                 setTitle("Konfiguration");

@@ -1,4 +1,3 @@
-package main;
 
 import java.awt.Desktop;
 import java.awt.image.BufferedImage;
@@ -330,9 +329,9 @@ public class Mandelbrot {
         // reverse the gradient
         int[] gradientRev = new int[gradient.length];
         int c = 0;
-        for (int i = gradient.length -1; i >= 0; i--)
+        for (int i = gradient.length - 1; i >= 0; i--)
             gradientRev[c++] = gradient[i];
-        
+
         // build the color palette
         float[] fractions = new float[gradientRev.length];
         for (int i = 0; i < fractions.length; i++)
@@ -375,6 +374,7 @@ public class Mandelbrot {
             System.exit(-1);
         }
     }
+
 
     public void build(final Runnable onFinish) {
         this.build((percentage) -> {

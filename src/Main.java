@@ -1,4 +1,3 @@
-package main;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -51,6 +50,8 @@ public class Main implements MouseListener {
     Mandelbrot mandelbrot;
     Mandelbrot mandelbrotDisplayed;
     BufferedImage image;
+
+    Orbit orbit;
 
     double cursorRe = 0;
     double cursorIm = 0;
@@ -161,7 +162,7 @@ public class Main implements MouseListener {
 
         pnlMenuBar.add(Box.createRigidArea(new Dimension(10, 0)));
 
-        JPanel pnlActions = new JPanel();
+       /*  JPanel pnlActions = new JPanel();
         pnlActions.setLayout(new BoxLayout(pnlActions, BoxLayout.X_AXIS));
         pnlActions.setBackground(Color.WHITE);
         pnlActions.setBorder(
@@ -170,7 +171,7 @@ public class Main implements MouseListener {
         chkDrawSet.setToolTipText("Mandelbrotmenge anzeigen");
         chkDrawSet.setSelected(true);
         chkDrawSet.addActionListener(e -> onCheckSetChange());
-        pnlActions.add(chkDrawSet);
+        pnlActions.add(chkDrawSet); 
 
         chkDrawOrbit = new JCheckBox(" Orbit für c ");
         chkDrawOrbit.setToolTipText("Orbit für die Zahl c anzeigen");
@@ -179,7 +180,9 @@ public class Main implements MouseListener {
 
         pnlMenuBar.add(pnlActions);
 
+      
         pnlMenuBar.add(Box.createRigidArea(new Dimension(10, 0)));
+          */
 
         JPanel pnlCursorContainer = new JPanel();
         pnlCursorContainer.setLayout(new BoxLayout(pnlCursorContainer, BoxLayout.X_AXIS));
@@ -304,6 +307,38 @@ public class Main implements MouseListener {
             g.drawImage(image, 0, 0, null);
             drawCursor(g);
         }
+
+        if (this.chkDrawOrbit.isSelected()) {
+            if (this.orbit.isBuilt()) {
+                g.setColor(Color.BLUE);
+                double[] data = this.orbit.getData();
+                int lastPixX = getPixX(data[0]);
+                int lastPixY = getPixY(data[1]);
+                for (int i = 2; i < data.length - 1; i += 2) {
+                    int pixX = getPixX(data[i]);
+                    int pixY = getPixY(data[i + 1]);
+                    g.drawLine(lastPixX, lastPixY, pixX, pixY);
+                    lastPixX = pixX;
+                    lastPixY = pixY;
+                }
+            } else if (!this.orbit.isBuilding()) {
+                this.orbit.build(() -> {
+                    this.canvas.repaint();
+                });
+            }
+        }
+    }
+
+    private int getPixX(double re) {
+        int pixX = (int) (((re - mandelbrotDisplayed.getMinRe()) * canvasWidth)
+                / Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe()));
+        return pixX;
+    }
+
+    private int getPixY(double im) {
+        int pixY = (int) (this.canvasHeight - (((-im + mandelbrotDisplayed.getMinIm()) * this.canvasHeight)
+                / -Math.abs(mandelbrotDisplayed.getMaxIm() - mandelbrotDisplayed.getMinIm())));
+        return pixY;
     }
 
     private void drawCursor(Graphics2D g) {
@@ -321,7 +356,6 @@ public class Main implements MouseListener {
                 int neg = (0xFFFFFF - rgb) | 0xFF000000;
                 g.setColor(new Color(neg));
                 g.fillRect(x, curPixY, 1, 1);
-
             }
         }
         // vertical
@@ -391,8 +425,8 @@ public class Main implements MouseListener {
 
     private void onBtnViewClicked() {
         try {
-            ViewDialog dialog = new ViewDialog(frame, mandelbrot, (zMinRe, zMinIm, zMaxRe, zMaxIm) -> {
-                mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, zMinRe, zMinIm, zMaxRe, zMaxIm,
+            ViewDialog dialog = new ViewDialog(frame, mandelbrot, (double[] arr) -> {
+                mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, arr[0], arr[1], arr[2], arr[3],
                         mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient());
                 this.chkFixAspectRatio.setSelected(true);
                 frame.getComponentListeners()[0].componentResized(null);
@@ -458,6 +492,7 @@ public class Main implements MouseListener {
             } catch (Exception e) {
                 // wrong input
             }
+            this.orbit = new Orbit(this.cursorRe, this.cursorIm, this.mandelbrot);
             this.canvas.repaint();
         }
     }
@@ -507,62 +542,4 @@ public class Main implements MouseListener {
         // TODO Auto-generated method stub
     }
 
-    private abstract class SimpleAction implements Action {
-
-        @Override
-        public Object getValue(String key) {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
-        public void putValue(String key, Object value) {
-            // TODO Auto-generated method stub
-            
-        }
-
-        @Override
-        public void setEnabled(boolean b) {
-            // TODO Auto-generated method stub
-            
-        }
-
-        @Override
-        public boolean isEnabled() {
-            // TODO Auto-generated method stub
-            return false;
-        }
-
-        @Override
-        public void addPropertyChangeListener(PropertyChangeListener listener) {
-            // TODO Auto-generated method stub
-            
-        }
-
-        @Override
-        public void removePropertyChangeListener(PropertyChangeListener listener) {
-            // TODO Auto-generated method stub
-            
-        }
-    }
-
-    @FunctionalInterface
-    interface FourDoubleRunnable {
-        void run(double v1, double v2, double v3, double v4);
-    }
-
-    @FunctionalInterface
-    interface IntArrayRunnable {
-        void run(int[] arr);
-    }
-
-    @FunctionalInterface
-    interface TwoIntAndIntArrRunnable {
-        void run(int a, int b, int[] arr);
-    }
-
-    @FunctionalInterface
-    interface Executable<T> {
-        void run(T v);
-    }
 }

@@ -1,11 +1,9 @@
-package main;
+
 
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.*;
-
-import main.Main.FourDoubleRunnable;
 
 public class ViewDialog extends JDialog {
 
@@ -22,7 +20,7 @@ public class ViewDialog extends JDialog {
     JLabel lblMaxRe;
     JLabel lblMaxIm;
 
-    public ViewDialog(Frame frame, Mandelbrot mandelbrot, FourDoubleRunnable onConfirm) {
+    public ViewDialog(Frame frame, Mandelbrot mandelbrot, DoubleArrExecutable onConfirm) {
 
         super(frame, true);
 
@@ -85,7 +83,7 @@ public class ViewDialog extends JDialog {
                 double zMinIm = Double.parseDouble(txfMinIm.getText());
                 double zMaxRe = Double.parseDouble(txfMaxRe.getText());
                 double zMaxIm = Double.parseDouble(txfMaxIm.getText());
-                onConfirm.run(zMinRe, zMinIm, zMaxRe, zMaxIm);
+                onConfirm.run(new double[]{zMinRe, zMinIm, zMaxRe, zMaxIm});
                 dispose();
             }
         });
