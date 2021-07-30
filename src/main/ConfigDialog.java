@@ -35,7 +35,7 @@ public class ConfigDialog extends JDialog {
                 setResizable(false);
 
                 pnlRoot = new JPanel();
-                pnlRoot.setBorder(new EmptyBorder(10, 10, 10, 10));
+                pnlRoot.setBorder(new EmptyBorder(20, 10, 20, 10));
                 pnlRoot.setLayout(new BorderLayout());
 
                 /*
@@ -87,7 +87,7 @@ public class ConfigDialog extends JDialog {
                 pnlColors.add(pnlColorInsideContainer);
 
                 // free space
-                pnlColors.add(Box.createRigidArea(new Dimension(15, 0)));
+                pnlColors.add(Box.createRigidArea(new Dimension(10, 0)));
 
                 JPanel pnlColorGradientContainer = new JPanel();
                 pnlColorGradientContainer.setLayout(new BoxLayout(pnlColorGradientContainer, BoxLayout.X_AXIS));

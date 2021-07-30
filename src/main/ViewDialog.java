@@ -12,8 +12,6 @@ public class ViewDialog extends JDialog {
     JPanel pnlRoot;
     JPanel pnlMain;
 
-    static final int FRAME_WIDTH = 250;
-
     JTextField txfMinRe;
     JTextField txfMinIm;
     JTextField txfMaxRe;
@@ -32,15 +30,12 @@ public class ViewDialog extends JDialog {
         setResizable(false);
 
         pnlRoot = new JPanel();
-        pnlRoot.setBorder(new EmptyBorder(10, 10, 10, 10));
+        pnlRoot.setBorder(new EmptyBorder(20, 10, 20, 10));
         pnlRoot.setLayout(new BorderLayout());
 
         JLabel lblInfo = new JLabel(
-                "<html>Der darzustellende Bereich der komplexen Zahlenebene wird durch folgende vier Werte definiert: </html>");
+                "<html>Der darzustellende Bereich der komplexen <br> Zahlenebene wird durch folgende vier Werte <br> definiert: </html>");
 
-        lblInfo.setPreferredSize(new Dimension(FRAME_WIDTH, 40));
-        lblInfo.setMinimumSize(new Dimension(FRAME_WIDTH, 40));
-        lblInfo.setMaximumSize(new Dimension(FRAME_WIDTH, 40));
         pnlRoot.add(lblInfo, BorderLayout.PAGE_START);
 
         pnlMain = new JPanel();
@@ -76,7 +71,7 @@ public class ViewDialog extends JDialog {
         pnlMain.add(txfMaxIm);
 
         SpringUtilities.makeCompactGrid(pnlMain, 4, 2, // rows, cols
-                0, 0, // initX, initY
+                0, 6, // initX, initY
                 0, 6); // xPad, yPad
         pnlRoot.add(pnlMain, BorderLayout.CENTER);
 
@@ -93,7 +88,6 @@ public class ViewDialog extends JDialog {
                 onConfirm.run(zMinRe, zMinIm, zMaxRe, zMaxIm);
                 dispose();
             }
-
         });
 
         pnlRoot.add(btnConfirm, BorderLayout.PAGE_END);

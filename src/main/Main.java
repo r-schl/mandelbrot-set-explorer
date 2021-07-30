@@ -9,6 +9,7 @@ import javax.swing.event.MenuListener;
 import javax.swing.plaf.ButtonUI;
 import javax.swing.text.*;
 import java.awt.image.*;
+import java.beans.PropertyChangeListener;
 import java.awt.Dialog.*;
 import java.awt.font.*;
 import java.util.*;
@@ -48,6 +49,7 @@ public class Main implements MouseListener {
     int canvasHeight;
 
     Mandelbrot mandelbrot;
+    Mandelbrot mandelbrotDisplayed;
     BufferedImage image;
 
     double cursorRe = 0;
@@ -112,6 +114,7 @@ public class Main implements MouseListener {
         pnlConfig.setBorder(
                 createTitledBorder(createEtchedBorder(), "Einstellungen", TitledBorder.LEFT, TitledBorder.TOP));
         JButton btnConfig = new JButton("Konfigurieren");
+        btnConfig.setToolTipText("Maximale Iterationsanzahl (n_max) und Färbung einstellen");
         btnConfig.addActionListener(e -> onBtnConfigClicked());
         pnlConfig.add(btnConfig);
 
@@ -125,11 +128,13 @@ public class Main implements MouseListener {
         pnlView.setBorder(
                 createTitledBorder(createEtchedBorder(), VIEW_PANEL_TITLE, TitledBorder.LEFT, TitledBorder.TOP));
         JButton btnView = new JButton("Anpassen ✎");
+        btnView.setToolTipText("View-Window exakt anpassen");
         btnView.addActionListener(e -> onBtnViewClicked());
         pnlView.add(btnView);
         pnlView.add(Box.createRigidArea(new Dimension(3, 0)));
 
         btnZoomIn = new ImageButton("res/plus.png");
+        btnZoomIn.setToolTipText("Hineinzoomen (2x)");
         btnZoomIn.setPreferredSize(new Dimension(21, 21));
         btnZoomIn.setMinimumSize(new Dimension(21, 21));
         btnZoomIn.setMaximumSize(new Dimension(21, 21));
@@ -137,6 +142,7 @@ public class Main implements MouseListener {
         pnlView.add(btnZoomIn);
 
         btnZoomOut = new ImageButton("res/minus.png");
+        btnZoomOut.setToolTipText("Herauszoomen (0.5x)");
         btnZoomOut.setPreferredSize(new Dimension(21, 21));
         btnZoomOut.setMinimumSize(new Dimension(21, 21));
         btnZoomOut.setMaximumSize(new Dimension(21, 21));
@@ -146,6 +152,8 @@ public class Main implements MouseListener {
         pnlView.add(Box.createRigidArea(new Dimension(3, 0)));
 
         chkFixAspectRatio = new JCheckBox("Sperren");
+        chkFixAspectRatio
+                .setToolTipText("Beeinflussung des View-Windows durch Größenänderungen des Fensters verhindern");
         chkFixAspectRatio.addActionListener(e -> onCheckFixAspectRatioChange());
         pnlView.add(chkFixAspectRatio);
 
@@ -159,10 +167,13 @@ public class Main implements MouseListener {
         pnlActions.setBorder(
                 createTitledBorder(createEtchedBorder(), "Darstellung", TitledBorder.LEFT, TitledBorder.TOP));
         chkDrawSet = new JCheckBox(" Mandelbrotmenge ");
+        chkDrawSet.setToolTipText("Mandelbrotmenge anzeigen");
+        chkDrawSet.setSelected(true);
         chkDrawSet.addActionListener(e -> onCheckSetChange());
         pnlActions.add(chkDrawSet);
 
         chkDrawOrbit = new JCheckBox(" Orbit für c ");
+        chkDrawOrbit.setToolTipText("Orbit für die Zahl c anzeigen");
         chkDrawOrbit.addActionListener(e -> onCheckOrbitChange());
         pnlActions.add(chkDrawOrbit);
 
@@ -200,10 +211,6 @@ public class Main implements MouseListener {
         pnlCursorContainer.add(pnlCursor);
 
         pnlMenuBar.add(pnlCursorContainer);
-
-        /*
-         * JLabel lblPlaceHolder5 = new JLabel("   "); mnBar.add(lblPlaceHolder5);
-         */
 
         frame.setJMenuBar(mnBar);
 
@@ -243,6 +250,8 @@ public class Main implements MouseListener {
         double ar = (double) this.canvasWidth / this.canvasHeight;
         this.mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, -1.5 * ar, -1.5, 1.5 * ar, 1.5, 100,
                 0x000000, new int[] { 0xff003c, 0xff003c, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF });
+        this.mandelbrotDisplayed = new Mandelbrot(this.canvasWidth, this.canvasHeight, -1.5 * ar, -1.5, 1.5 * ar, 1.5,
+                100, 0x000000, new int[] { 0xff003c, 0xff003c, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF });
 
         putCursor(0, 0);
         this.canvas.repaint();
@@ -271,10 +280,12 @@ public class Main implements MouseListener {
 
         g.setColor(Color.WHITE);
         g.drawImage(image, 0, 0, null);
-        if (this.shouldDrawCursor) drawCursor(g);
+        if (this.shouldDrawCursor)
+            drawCursor(g);
 
         if (this.chkDrawSet.isSelected()) {
             if (this.mandelbrot.isBuilt()) {
+                this.mandelbrotDisplayed = this.mandelbrot;
                 image.setRGB(0, 0, canvasWidth, canvasHeight, this.mandelbrot.getImage(), 0, canvasWidth);
                 g.drawImage(image, 0, 0, null);
                 drawCursor(g);
@@ -287,36 +298,39 @@ public class Main implements MouseListener {
                     this.canvas.repaint();
                 });
             }
+        } else {
+            this.mandelbrotDisplayed = this.mandelbrot;
+            g.setColor(Color.WHITE);
+            g.drawImage(image, 0, 0, null);
+            drawCursor(g);
         }
     }
 
     private void drawCursor(Graphics2D g) {
         // Map the complex number c to pixel coordinates
-        int curPixX = (int) (((this.cursorRe - mandelbrot.getMinRe()) * canvasWidth)
-                / Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe()));
-        int curPixY = (int) (this.canvasHeight - (((-this.cursorIm + mandelbrot.getMinIm()) * this.canvasHeight)
-                / -Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm())));
+        int curPixX = (int) (((this.cursorRe - mandelbrotDisplayed.getMinRe()) * canvasWidth)
+                / Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe()));
+        int curPixY = (int) (this.canvasHeight
+                - (((-this.cursorIm + mandelbrotDisplayed.getMinIm()) * this.canvasHeight)
+                        / -Math.abs(mandelbrotDisplayed.getMaxIm() - mandelbrotDisplayed.getMinIm())));
 
         // horizontal
-        if (curPixY < this.image.getHeight()) {
+        if (curPixY < this.image.getHeight() && curPixY >= 0) {
             for (int x = 0; x < this.image.getWidth(); x++) {
                 int rgb = this.image.getRGB(x, curPixY);
                 int neg = (0xFFFFFF - rgb) | 0xFF000000;
                 g.setColor(new Color(neg));
                 g.fillRect(x, curPixY, 1, 1);
-                g.setColor(Color.WHITE);
-                g.fillRect(x, curPixY + 1, 1, 1);
+
             }
         }
         // vertical
-        if (curPixX < this.image.getWidth()) {
+        if (curPixX < this.image.getWidth() && curPixX >= 0) {
             for (int y = 0; y < this.image.getHeight(); y++) {
                 int rgb = this.image.getRGB(curPixX, y);
                 int neg = (0xFFFFFF - rgb) | 0xFF000000;
                 g.setColor(new Color(neg));
                 g.fillRect(curPixX, y, 1, 1);
-                g.setColor(Color.WHITE);
-                g.fillRect(curPixX + 1, y, 1, 1);
             }
         }
 
@@ -371,6 +385,7 @@ public class Main implements MouseListener {
             mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(), minImNew, maxReNew,
                     mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient());
         }
+        this.mandelbrotDisplayed = this.mandelbrot;
         this.canvas.repaint();
     }
 
@@ -433,22 +448,6 @@ public class Main implements MouseListener {
         this.canvas.repaint();
     }
 
-    private void onIterationChange() {
-
-    }
-
-    private void onExport() {
-
-    }
-
-    private void onExit() {
-        System.exit(0);
-    }
-
-    private void setViewWindow() {
-
-    }
-
     boolean blockOnCursorChange = false;
 
     private void onCursorChange() {
@@ -481,19 +480,12 @@ public class Main implements MouseListener {
     @Override
     public void mousePressed(MouseEvent e) {
         if (e.getButton() == MouseEvent.BUTTON1) {
-
-            double zOriginRe = mandelbrot.getMinRe();
-            double zOriginIm = mandelbrot.getMaxIm();
-            double s = Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe()) / (double) this.canvasWidth;
+            double zOriginRe = mandelbrotDisplayed.getMinRe();
+            double zOriginIm = mandelbrotDisplayed.getMaxIm();
+            double s = Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe())
+                    / (double) this.canvasWidth;
             double cRe = zOriginRe + s * e.getX();
             double cIm = zOriginIm - s * e.getY();
-
-            /*
-             * double re = (e.getX() * Math.abs(this.mandelbrot.getMaxRe() -
-             * this.mandelbrot.getMinRe())) / width + this.mandelbrot.getMinRe(); double im
-             * = ((height - e.getY()) * Math.abs(this.mandelbrot.getMaxIm() -
-             * this.mandelbrot.getMinIm())) / height + this.mandelbrot.getMinIm();
-             */
             this.putCursor(cRe, cIm);
         }
     }
@@ -513,7 +505,45 @@ public class Main implements MouseListener {
     @Override
     public void mouseExited(MouseEvent e) {
         // TODO Auto-generated method stub
+    }
 
+    private abstract class SimpleAction implements Action {
+
+        @Override
+        public Object getValue(String key) {
+            // TODO Auto-generated method stub
+            return null;
+        }
+
+        @Override
+        public void putValue(String key, Object value) {
+            // TODO Auto-generated method stub
+            
+        }
+
+        @Override
+        public void setEnabled(boolean b) {
+            // TODO Auto-generated method stub
+            
+        }
+
+        @Override
+        public boolean isEnabled() {
+            // TODO Auto-generated method stub
+            return false;
+        }
+
+        @Override
+        public void addPropertyChangeListener(PropertyChangeListener listener) {
+            // TODO Auto-generated method stub
+            
+        }
+
+        @Override
+        public void removePropertyChangeListener(PropertyChangeListener listener) {
+            // TODO Auto-generated method stub
+            
+        }
     }
 
     @FunctionalInterface
