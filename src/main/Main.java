@@ -37,16 +37,9 @@ public class Main implements MouseListener {
     JCheckBox chkDrawSet;
     JProgressBar progressBar;
 
-    final double DEFAULT_CURSOR_RE = 0;
-    final double DEFAULT_CURSOR_IM = 0;
-    final int DEFAULT_ITERATIONS = 700;
-    final int SIDEBAR_WIDTH = 240;
-    final int BTN_HEIGHT = 30;
-    final int PNL_1ROW_HEIGHT = 50;
-    final int STATUS_BAR_HEIGHT = 20;
-    final String WINDOW_TITLE = "Mandelbrot-Viewer";
-    final String VIEW_PNL_TITLE = "View-Window";
-    final String CURSOR_PNL_TITLE = "Cursor";
+    final String FRAME_TITLE = "Mandelbrot-Viewer";
+    final String VIEW_PANEL_TITLE = "View-Window";
+    final String CURSOR_PANEL_TITLE = "Cursor c";
 
     int frameWidth = 800;
     int frameHeight = 800;
@@ -54,14 +47,13 @@ public class Main implements MouseListener {
     int canvasWidth;
     int canvasHeight;
 
-    // Render stuff
-    private BufferStrategy bufferStrategy;
-    private Graphics2D g;
-
     Mandelbrot mandelbrot;
     BufferedImage image;
+
     double cursorRe = 0;
     double cursorIm = 0;
+
+    boolean shouldDrawCursor = true;
 
     public static void main(String[] args) {
         Main main = new Main();
@@ -83,7 +75,7 @@ public class Main implements MouseListener {
         }
 
         // this method is executed on the Swing UI Thread
-        frame = new JFrame(WINDOW_TITLE);
+        frame = new JFrame(FRAME_TITLE);
         frame.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
                 System.exit(0);
@@ -95,88 +87,94 @@ public class Main implements MouseListener {
             }
         });
         frame.setResizable(true);
-        frame.setMinimumSize(new Dimension(1080, 400));
+        frame.setMinimumSize(new Dimension(0, 400)); // 1080
+        frame.setSize(new Dimension(1080, 600));
         frame.setFocusable(true);
-
-        // pnlMain = new JPanel();
-        // pnlMain.setLayout(new BorderLayout());
-        // frame.add(pnlMain);
 
         ////// MENU BAR //////
 
         mnBar = new JMenuBar();
         mnBar.setLayout(new BorderLayout());
-        mnBar.setMaximumSize(new Dimension(500, 50));
+        mnBar.setMaximumSize(new Dimension(500, 60));
         mnBar.setBorder(new EmptyBorder(0, 0, 0, 0));
-        mnBar.setMinimumSize(new Dimension(500, 50));
-        mnBar.setPreferredSize(new Dimension(500, 50));
+        mnBar.setMinimumSize(new Dimension(500, 60));
+        mnBar.setPreferredSize(new Dimension(500, 60));
 
         JPanel pnlMenuBar = new JPanel();
         pnlMenuBar.setLayout(new BoxLayout(pnlMenuBar, BoxLayout.X_AXIS));
         pnlMenuBar.setBackground(Color.WHITE);
-        pnlMenuBar.setBorder(new EmptyBorder(8, 8, 8, 8));
+        pnlMenuBar.setBorder(new EmptyBorder(4, 10, 4, 10));
         mnBar.add(pnlMenuBar, BorderLayout.CENTER);
 
-        JButton btnConfig = new JButton("Konfiguration");
-        pnlMenuBar.add(btnConfig);
+        JPanel pnlConfig = new JPanel();
+        pnlConfig.setLayout(new BoxLayout(pnlConfig, BoxLayout.X_AXIS));
+        pnlConfig.setBackground(Color.WHITE);
+        pnlConfig.setBorder(
+                createTitledBorder(createEtchedBorder(), "Einstellungen", TitledBorder.LEFT, TitledBorder.TOP));
+        JButton btnConfig = new JButton("Konfigurieren");
+        btnConfig.addActionListener(e -> onBtnConfigClicked());
+        pnlConfig.add(btnConfig);
 
-        pnlMenuBar.add(Box.createRigidArea(new Dimension(14, 0)));
+        pnlMenuBar.add(pnlConfig);
 
-        JButton btnView = new JButton("View-Window");
-        btnView.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                onBtnViewClicked();
-            }
-        });
-        pnlMenuBar.add(btnView);
-        pnlMenuBar.add(Box.createRigidArea(new Dimension(3, 0)));
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(10, 0)));
 
-        chkFixAspectRatio = new JCheckBox("Seitenverhältnis sperren");
-        chkFixAspectRatio.addActionListener(e -> onCheckFixAspectRatioChange());
-        pnlMenuBar.add(chkFixAspectRatio);
-
-        /*
-         * JLabel lblPlaceHolder1 = new JLabel("  "); mnBar.add(lblPlaceHolder1);
-         */
-        pnlMenuBar.add(Box.createRigidArea(new Dimension(3, 0)));
+        JPanel pnlView = new JPanel();
+        pnlView.setLayout(new BoxLayout(pnlView, BoxLayout.X_AXIS));
+        pnlView.setBackground(Color.WHITE);
+        pnlView.setBorder(
+                createTitledBorder(createEtchedBorder(), VIEW_PANEL_TITLE, TitledBorder.LEFT, TitledBorder.TOP));
+        JButton btnView = new JButton("Anpassen ✎");
+        btnView.addActionListener(e -> onBtnViewClicked());
+        pnlView.add(btnView);
+        pnlView.add(Box.createRigidArea(new Dimension(3, 0)));
 
         btnZoomIn = new ImageButton("res/plus.png");
         btnZoomIn.setPreferredSize(new Dimension(21, 21));
         btnZoomIn.setMinimumSize(new Dimension(21, 21));
         btnZoomIn.setMaximumSize(new Dimension(21, 21));
         btnZoomIn.addActionListener(e -> onZoomIn());
-        pnlMenuBar.add(btnZoomIn);
+        pnlView.add(btnZoomIn);
 
         btnZoomOut = new ImageButton("res/minus.png");
         btnZoomOut.setPreferredSize(new Dimension(21, 21));
         btnZoomOut.setMinimumSize(new Dimension(21, 21));
         btnZoomOut.setMaximumSize(new Dimension(21, 21));
         btnZoomOut.addActionListener(e -> onZoomOut());
-        pnlMenuBar.add(btnZoomOut);
+        pnlView.add(btnZoomOut);
 
-        /*
-         * JLabel lblPlaceHolder3 = new JLabel("   "); mnBar.add(lblPlaceHolder3);
-         */
+        pnlView.add(Box.createRigidArea(new Dimension(3, 0)));
 
-        pnlMenuBar.add(Box.createRigidArea(new Dimension(14, 0)));
+        chkFixAspectRatio = new JCheckBox("Sperren");
+        chkFixAspectRatio.addActionListener(e -> onCheckFixAspectRatioChange());
+        pnlView.add(chkFixAspectRatio);
 
+        pnlMenuBar.add(pnlView);
+
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(10, 0)));
+
+        JPanel pnlActions = new JPanel();
+        pnlActions.setLayout(new BoxLayout(pnlActions, BoxLayout.X_AXIS));
+        pnlActions.setBackground(Color.WHITE);
+        pnlActions.setBorder(
+                createTitledBorder(createEtchedBorder(), "Darstellung", TitledBorder.LEFT, TitledBorder.TOP));
         chkDrawSet = new JCheckBox(" Mandelbrotmenge ");
-        // chkDrawSet.setBackground(Color.WHITE);
         chkDrawSet.addActionListener(e -> onCheckSetChange());
-        pnlMenuBar.add(chkDrawSet);
+        pnlActions.add(chkDrawSet);
 
         chkDrawOrbit = new JCheckBox(" Orbit für c ");
-        // chkDrawOrbit.setBackground(Color.WHITE);
         chkDrawOrbit.addActionListener(e -> onCheckOrbitChange());
-        pnlMenuBar.add(chkDrawOrbit);
+        pnlActions.add(chkDrawOrbit);
 
-        /*
-         * JLabel lblPlaceHolder4 = new JLabel("     "); mnBar.add(lblPlaceHolder4);
-         */
+        pnlMenuBar.add(pnlActions);
 
-        pnlMenuBar.add(Box.createRigidArea(new Dimension(14, 0)));
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(10, 0)));
 
+        JPanel pnlCursorContainer = new JPanel();
+        pnlCursorContainer.setLayout(new BoxLayout(pnlCursorContainer, BoxLayout.X_AXIS));
+        pnlCursorContainer.setBackground(Color.WHITE);
+        pnlCursorContainer.setBorder(
+                createTitledBorder(createEtchedBorder(), CURSOR_PANEL_TITLE, TitledBorder.LEFT, TitledBorder.TOP));
         JPanel pnlCursor = new JPanel();
         pnlCursor.setPreferredSize(new Dimension(222, 21));
         pnlCursor.setMinimumSize(new Dimension(222, 21));
@@ -199,7 +197,9 @@ public class Main implements MouseListener {
         txfCursorIm.getDocument().addDocumentListener((SimpleDocumentListener) e -> onCursorChange());
         pnlCursor.add(txfCursorIm);
 
-        pnlMenuBar.add(pnlCursor);
+        pnlCursorContainer.add(pnlCursor);
+
+        pnlMenuBar.add(pnlCursorContainer);
 
         /*
          * JLabel lblPlaceHolder5 = new JLabel("   "); mnBar.add(lblPlaceHolder5);
@@ -241,8 +241,8 @@ public class Main implements MouseListener {
         this.canvasWidth = canvas.getWidth();
         this.canvasHeight = canvas.getHeight();
         double ar = (double) this.canvasWidth / this.canvasHeight;
-        this.mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, -1.5 * ar, -1.5, 1.5 * ar, 1.5, 40,
-                0xedd221, new int[] { 0xFFFFFF, 0x32a852});
+        this.mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, -1.5 * ar, -1.5, 1.5 * ar, 1.5, 100,
+                0x000000, new int[] { 0xff003c, 0xff003c, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF });
 
         putCursor(0, 0);
         this.canvas.repaint();
@@ -271,7 +271,7 @@ public class Main implements MouseListener {
 
         g.setColor(Color.WHITE);
         g.drawImage(image, 0, 0, null);
-        drawCursor(g);
+        if (this.shouldDrawCursor) drawCursor(g);
 
         if (this.chkDrawSet.isSelected()) {
             if (this.mandelbrot.isBuilt()) {
@@ -288,22 +288,6 @@ public class Main implements MouseListener {
                 });
             }
         }
-
-    }
-
-    private void drawCursor2(Graphics2D g, int cursorWidth, int cursorHeight, int thickness) {
-        g.setColor(Color.red);
-        g.setStroke(new BasicStroke(thickness));
-        // Map the complex number c to pixel coordinates
-        int curPixX = (int) (((this.cursorRe - mandelbrot.getMinRe()) * canvasWidth)
-                / Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe()));
-        int curPixY = (int) (this.canvasHeight - (((-this.cursorIm + mandelbrot.getMinIm()) * this.canvasHeight)
-                / -Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm())));
-        // Draw the cursor cross
-        g.drawLine(curPixX - (cursorWidth / 2), curPixY - (cursorHeight / 2), curPixX + (cursorWidth / 2),
-                curPixY + (cursorHeight / 2));
-        g.drawLine(curPixX + (cursorWidth / 2), curPixY - (cursorHeight / 2), curPixX - (cursorWidth / 2),
-                curPixY + (cursorHeight / 2));
     }
 
     private void drawCursor(Graphics2D g) {
@@ -320,6 +304,8 @@ public class Main implements MouseListener {
                 int neg = (0xFFFFFF - rgb) | 0xFF000000;
                 g.setColor(new Color(neg));
                 g.fillRect(x, curPixY, 1, 1);
+                g.setColor(Color.WHITE);
+                g.fillRect(x, curPixY + 1, 1, 1);
             }
         }
         // vertical
@@ -329,6 +315,8 @@ public class Main implements MouseListener {
                 int neg = (0xFFFFFF - rgb) | 0xFF000000;
                 g.setColor(new Color(neg));
                 g.fillRect(curPixX, y, 1, 1);
+                g.setColor(Color.WHITE);
+                g.fillRect(curPixX + 1, y, 1, 1);
             }
         }
 
@@ -393,6 +381,23 @@ public class Main implements MouseListener {
                         mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient());
                 this.chkFixAspectRatio.setSelected(true);
                 frame.getComponentListeners()[0].componentResized(null);
+            });
+            dialog.setModalityType(ModalityType.APPLICATION_MODAL);
+            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+            dialog.setVisible(true);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void onBtnConfigClicked() {
+        try {
+            ConfigDialog dialog = new ConfigDialog(frame, mandelbrot, (int nMax, int colorInside, int[] gradient) -> {
+                this.mandelbrot.abort();
+                this.mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(),
+                        mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), nMax, colorInside,
+                        gradient);
+                this.canvas.repaint();
             });
             dialog.setModalityType(ModalityType.APPLICATION_MODAL);
             dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -514,5 +519,20 @@ public class Main implements MouseListener {
     @FunctionalInterface
     interface FourDoubleRunnable {
         void run(double v1, double v2, double v3, double v4);
+    }
+
+    @FunctionalInterface
+    interface IntArrayRunnable {
+        void run(int[] arr);
+    }
+
+    @FunctionalInterface
+    interface TwoIntAndIntArrRunnable {
+        void run(int a, int b, int[] arr);
+    }
+
+    @FunctionalInterface
+    interface Executable<T> {
+        void run(T v);
     }
 }

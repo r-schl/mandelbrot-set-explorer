@@ -150,6 +150,10 @@ public class Mandelbrot {
      */
     public Mandelbrot(int width, int height, double zMinRe, double zMinIm, double zMaxRe, double zMaxIm, int nMax,
             int colorInside, int[] gradient) {
+        if (nMax < 0) {
+            System.err.println(">> nMax must be greater than or equal to 0 <<");
+            System.exit(-1);
+        }
         this.width = width;
         this.height = height;
         this.zMinRe = zMinRe;
@@ -168,16 +172,10 @@ public class Mandelbrot {
     }
 
     public Mandelbrot(Map<String, Object> config) {
-        this.width = (Integer) config.get("width");
-        this.height = (Integer) config.get("height");
-        this.zMinRe = (Double) config.get("minRe");
-        this.zMinIm = (Double) config.get("minIm");
-        this.zMaxRe = (Double) config.get("maxRe");
-        this.zMaxIm = (Double) config.get("maxIm");
-        this.nMax = (Integer) config.get("nMax");
-        this.gradient = ((ArrayList<Integer>) config.get("gradient")).stream().mapToInt(i -> i).toArray();
-        this.colorInside = (Integer) config.get("color");
-        this.palette = createColorPalette(this.colorInside, this.gradient, this.nMax);
+        this((Integer) config.get("width"), (Integer) config.get("height"), (Double) config.get("minRe"),
+                (Double) config.get("minIm"), (Double) config.get("maxRe"), (Double) config.get("maxIm"),
+                (Integer) config.get("nMax"), (Integer) config.get("color"),
+                ((ArrayList<Integer>) config.get("gradient")).stream().mapToInt(i -> i).toArray());
     }
 
     // Get Methods
@@ -317,31 +315,41 @@ public class Mandelbrot {
             System.exit(-1);
         }
 
+        if (nMax == 0)
+            return new int[] { 0, color };
+
         if (gradient.length == 1) {
-            int[] palette = new int[nMax + 1];
-            for (int i = 1; i < nMax; i++) {
+            int[] palette = new int[nMax + 2];
+            for (int i = 1; i < nMax + 1; i++) {
                 palette[i] = gradient[0];
             }
-            palette[nMax] = color;
+            palette[nMax + 1] = color;
             return palette;
         }
 
-        float[] fractions = new float[gradient.length];
+        // reverse the gradient
+        int[] gradientRev = new int[gradient.length];
+        int c = 0;
+        for (int i = gradient.length -1; i >= 0; i--)
+            gradientRev[c++] = gradient[i];
+        
+        // build the color palette
+        float[] fractions = new float[gradientRev.length];
         for (int i = 0; i < fractions.length; i++)
-            fractions[i] = ((float) 1 / gradient.length) * i;
-        Color[] colorsGradient = new Color[gradient.length];
+            fractions[i] = ((float) 1 / gradientRev.length) * i;
+        Color[] colorsGradient = new Color[gradientRev.length];
         for (int i = 0; i < colorsGradient.length; i++)
-            colorsGradient[i] = new Color(gradient[i]);
-        LinearGradientPaint p = new LinearGradientPaint(0, 0, nMax - 1, 1, fractions, colorsGradient);
-        BufferedImage bi = new BufferedImage(nMax - 1, 1, BufferedImage.TYPE_INT_RGB);
+            colorsGradient[i] = new Color(gradientRev[i]);
+        LinearGradientPaint p = new LinearGradientPaint(0, 0, nMax, 1, fractions, colorsGradient);
+        BufferedImage bi = new BufferedImage(nMax, 1, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = bi.createGraphics();
         g2d.setPaint(p);
-        g2d.fillRect(0, 0, nMax - 1, 1);
+        g2d.fillRect(0, 0, nMax, 1);
         g2d.dispose();
-        int[] palette = new int[nMax + 1]; // because index 0 is placeholder
+        int[] palette = new int[nMax + 2]; // because index 0 is placeholder
         for (int i = 0; i < bi.getWidth(); i++)
             palette[i + 1] = bi.getRGB(i, 0);
-        palette[nMax] = color;
+        palette[nMax + 1] = color;
         return palette;
     }
 
@@ -529,7 +537,7 @@ public class Mandelbrot {
                 return n;
             }
         }
-        return this.nMax;
+        return this.nMax + 1;
     }
 
     @FunctionalInterface

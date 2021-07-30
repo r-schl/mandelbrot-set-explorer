@@ -4,23 +4,15 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.text.*;
-import javax.swing.*;
-
-import java.awt.*;
 
 import main.Main.FourDoubleRunnable;
-
-import java.awt.image.*;
-import java.awt.font.*;
-import java.util.*;
 
 public class ViewDialog extends JDialog {
 
     JPanel pnlRoot;
     JPanel pnlMain;
 
-    static final int FRAME_WIDTH = 200;
+    static final int FRAME_WIDTH = 250;
 
     JTextField txfMinRe;
     JTextField txfMinIm;
@@ -46,9 +38,9 @@ public class ViewDialog extends JDialog {
         JLabel lblInfo = new JLabel(
                 "<html>Der darzustellende Bereich der komplexen Zahlenebene wird durch folgende vier Werte definiert: </html>");
 
-        lblInfo.setPreferredSize(new Dimension(FRAME_WIDTH, 60));
-        lblInfo.setMinimumSize(new Dimension(FRAME_WIDTH, 60));
-        lblInfo.setMaximumSize(new Dimension(FRAME_WIDTH, 60));
+        lblInfo.setPreferredSize(new Dimension(FRAME_WIDTH, 40));
+        lblInfo.setMinimumSize(new Dimension(FRAME_WIDTH, 40));
+        lblInfo.setMaximumSize(new Dimension(FRAME_WIDTH, 40));
         pnlRoot.add(lblInfo, BorderLayout.PAGE_START);
 
         pnlMain = new JPanel();
@@ -89,9 +81,7 @@ public class ViewDialog extends JDialog {
         pnlRoot.add(pnlMain, BorderLayout.CENTER);
 
         JButton btnConfirm = new JButton("Bestätigen ✓");
-        btnConfirm.setPreferredSize(new Dimension(FRAME_WIDTH, 30));
-        btnConfirm.setMinimumSize(new Dimension(FRAME_WIDTH, 30));
-        btnConfirm.setMaximumSize(new Dimension(FRAME_WIDTH, 30));
+        btnConfirm.setMargin(new Insets(6, 3, 6, 3));
         btnConfirm.addActionListener(new ActionListener() {
 
             @Override
