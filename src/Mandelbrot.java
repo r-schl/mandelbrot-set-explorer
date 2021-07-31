@@ -53,6 +53,7 @@ public class Mandelbrot {
 
     private boolean isBuilt = false;
     private boolean isBuilding = false;
+    private boolean hasBeenAborted = false;
 
     private static boolean isVerbose = false;
     private static boolean shouldOpen = false;
@@ -235,6 +236,10 @@ public class Mandelbrot {
         return this.isBuilt;
     }
 
+    public boolean hasBeenAborted() {
+        return this.hasBeenAborted;
+    }
+
     public boolean isBuilding() {
         return this.isBuilding;
     }
@@ -375,7 +380,6 @@ public class Mandelbrot {
         }
     }
 
-
     public void build(final Runnable onFinish) {
         this.build((percentage) -> {
             // empty
@@ -501,12 +505,12 @@ public class Mandelbrot {
     }
 
     public void abort() {
-        isBuilt = false;
-        isBuilding = false;
+        this.isBuilding = false;
         if (this.workers == null)
             return;
         for (int i = 0; i < this.NUMTHREADS; i++) {
-            if (this.workers[i] != null) {
+            if (this.workers[i] != null && !this.workers[i].isDone()) {
+                this.hasBeenAborted = true;
                 try {
                     this.workers[i].cancel(true);
                 } catch (Exception var9) {

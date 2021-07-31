@@ -7,6 +7,7 @@ import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
 import javax.swing.plaf.ButtonUI;
 import javax.swing.text.*;
+
 import java.awt.image.*;
 import java.beans.PropertyChangeListener;
 import java.awt.Dialog.*;
@@ -16,15 +17,16 @@ import java.util.*;
 import static javax.swing.BorderFactory.createEtchedBorder;
 import static javax.swing.BorderFactory.createTitledBorder;
 
-public class Main implements MouseListener {
+public class Main implements MouseListener, KeyListener {
 
     // UI-Components
-    JPanel canvas;
+    JLayeredPane canvas;
     JFrame frame;
     JPanel pnlDraw;
     ImageButton btnZoomIn;
     JPanel pnlStatus;
     ImageButton btnZoomOut;
+    ImageButton btnZoomReset;
     // JPanel pnlMain;
 
     JMenuBar mnBar;
@@ -89,6 +91,7 @@ public class Main implements MouseListener {
                 onWindowResized();
             }
         });
+        frame.addKeyListener(this);
         frame.setResizable(true);
         frame.setMinimumSize(new Dimension(0, 400)); // 1080
         frame.setSize(new Dimension(1080, 600));
@@ -114,6 +117,7 @@ public class Main implements MouseListener {
         pnlConfig.setBackground(Color.WHITE);
         pnlConfig.setBorder(createTitledBorder(createEtchedBorder(), "Färbung", TitledBorder.LEFT, TitledBorder.TOP));
         JButton btnConfig = new JButton("Anpassen ✎");
+        btnConfig.setFocusable(false);
         btnConfig.setToolTipText("Verwendete Farben anpassen");
         btnConfig.addActionListener(e -> onBtnConfigClicked());
         pnlConfig.add(btnConfig);
@@ -129,6 +133,7 @@ public class Main implements MouseListener {
 
         spnIterations = new JSpinner();
         spnIterations.addChangeListener(e -> {
+            this.frame.requestFocus();
             onIterationsChange();
         });
         spnIterations.setPreferredSize(new Dimension(70, 21));
@@ -146,12 +151,14 @@ public class Main implements MouseListener {
         pnlView.setBorder(
                 createTitledBorder(createEtchedBorder(), VIEW_PANEL_TITLE, TitledBorder.LEFT, TitledBorder.TOP));
         JButton btnView = new JButton("Einstellen");
+        btnView.setFocusable(false);
         btnView.setToolTipText("View-Window exakt anpassen");
         btnView.addActionListener(e -> onBtnViewClicked());
         pnlView.add(btnView);
         pnlView.add(Box.createRigidArea(new Dimension(3, 0)));
 
         btnZoomIn = new ImageButton("res/plus.png");
+        btnZoomIn.setFocusable(false);
         btnZoomIn.setToolTipText("Hineinzoomen (2x)");
         btnZoomIn.setPreferredSize(new Dimension(21, 21));
         btnZoomIn.setMinimumSize(new Dimension(21, 21));
@@ -160,6 +167,7 @@ public class Main implements MouseListener {
         pnlView.add(btnZoomIn);
 
         btnZoomOut = new ImageButton("res/minus.png");
+        btnZoomOut.setFocusable(false);
         btnZoomOut.setToolTipText("Herauszoomen (0.5x)");
         btnZoomOut.setPreferredSize(new Dimension(21, 21));
         btnZoomOut.setMinimumSize(new Dimension(21, 21));
@@ -167,9 +175,19 @@ public class Main implements MouseListener {
         btnZoomOut.addActionListener(e -> onZoomOut());
         pnlView.add(btnZoomOut);
 
+        btnZoomReset = new ImageButton("res/undo-arrow.png");
+        btnZoomReset.setFocusable(false);
+        btnZoomReset.setToolTipText("Standard View-Window wiederherstellen");
+        btnZoomReset.setPreferredSize(new Dimension(21, 21));
+        btnZoomReset.setMinimumSize(new Dimension(21, 21));
+        btnZoomReset.setMaximumSize(new Dimension(21, 21));
+        btnZoomReset.addActionListener(e -> onResetView());
+        pnlView.add(btnZoomReset);
+
         pnlView.add(Box.createRigidArea(new Dimension(3, 0)));
 
         chkFixAspectRatio = new JCheckBox("Sperren");
+        chkFixAspectRatio.setFocusable(false);
         chkFixAspectRatio
                 .setToolTipText("Beeinflussung des View-Windows durch Größenänderungen des Fensters verhindern");
         chkFixAspectRatio.addActionListener(e -> onCheckFixAspectRatioChange());
@@ -217,7 +235,12 @@ public class Main implements MouseListener {
         txfCursorRe.setCaretPosition(0);
 
         txfCursorRe.setBorder(new EmptyBorder(0, 0, 0, 0));
-        txfCursorRe.getDocument().addDocumentListener((SimpleDocumentListener) e -> onCursorChange());
+        // txfCursorRe.getDocument().addDocumentListener((SimpleDocumentListener) e ->
+        // onCursorChange());
+        txfCursorRe.addActionListener(e -> {
+            this.frame.requestFocus();
+            onCursorChange();
+        });
         pnlCursor.add(txfCursorRe);
         JLabel lblCursorIm = new JLabel("  Im(c) = ");
         pnlCursor.add(lblCursorIm);
@@ -225,21 +248,20 @@ public class Main implements MouseListener {
 
         txfCursorIm.setCaretPosition(0);
         txfCursorIm.setBorder(new EmptyBorder(0, 0, 0, 0));
-        txfCursorIm.getDocument().addDocumentListener((SimpleDocumentListener) e -> onCursorChange());
+        // txfCursorIm.getDocument().addDocumentListener((SimpleDocumentListener) e ->
+        // onCursorChange());
+        txfCursorIm.addActionListener(e -> {
+            this.frame.requestFocus();
+            onCursorChange();
+        });
         pnlCursor.add(txfCursorIm);
 
         pnlCursorContainer.add(pnlCursor);
-        JSeparator sep = new JSeparator(SwingConstants.VERTICAL);
-        sep.setPreferredSize(new Dimension(5, 21));
-        sep.setMaximumSize(new Dimension(5, 21));
-        sep.setMinimumSize(new Dimension(5, 21));
 
         pnlCursorContainer.add(Box.createRigidArea(new Dimension(8, 0)));
-        pnlCursorContainer.add(sep);
-        pnlCursorContainer.add(Box.createRigidArea(new Dimension(3, 0)));
 
         lblInfoAboutC = new JLabel();
-       // lblInfoAboutC.setOpaque(true);
+        // lblInfoAboutC.setOpaque(true);
         pnlCursorContainer.add(lblInfoAboutC);
         pnlCursorContainer.add(Box.createRigidArea(new Dimension(3, 0)));
         pnlMenuBar.add(pnlCursorContainer);
@@ -264,7 +286,7 @@ public class Main implements MouseListener {
 
         ////// CANVAS //////
 
-        canvas = new JPanel() {
+        canvas = new JLayeredPane() {
             @Override
             protected void paintComponent(Graphics og) {
                 super.paintComponent(og);
@@ -273,7 +295,8 @@ public class Main implements MouseListener {
         };
         canvas.setDoubleBuffered(true);
         canvas.addMouseListener(this);
-        frame.add(canvas);
+
+        frame.getContentPane().add(canvas);
 
         frame.setVisible(true);
 
@@ -283,7 +306,7 @@ public class Main implements MouseListener {
         this.mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, -1.5 * ar, -1.5, 1.5 * ar, 1.5, 100,
                 0x000000, new int[] { 0xff003c, 0xFFFFFF });
         this.mandelbrotDisplayed = new Mandelbrot(this.canvasWidth, this.canvasHeight, -1.5 * ar, -1.5, 1.5 * ar, 1.5,
-                100, 0x000000, new int[] { 0xff003c, 0xFFFFFF});
+                100, 0x000000, new int[] { 0xff003c, 0xFFFFFF });
 
         this.spnIterations.setValue(mandelbrot.getNMax());
         this.lblInfoAboutC.setText("c ∈ 𝕄 (" + this.mandelbrot.getNMax() + "/" + this.mandelbrot.getNMax() + ")");
@@ -317,7 +340,7 @@ public class Main implements MouseListener {
         if (this.shouldDrawCursor)
             drawCursor(g);
 
-        if (this.mandelbrot.isBuilt()) {
+        if (this.mandelbrot.isBuilt() && !this.mandelbrot.hasBeenAborted()) {
             this.mandelbrotDisplayed = this.mandelbrot;
             image.setRGB(0, 0, canvasWidth, canvasHeight, this.mandelbrot.getImage(), 0, canvasWidth);
             g.drawImage(image, 0, 0, null);
@@ -361,7 +384,6 @@ public class Main implements MouseListener {
                 g.fillRect(curPixX, y, 1, 1);
             }
         }
-
     }
 
     private void onWindowResized() {
@@ -371,6 +393,7 @@ public class Main implements MouseListener {
         this.frame.revalidate();
 
         if (this.chkFixAspectRatio.isSelected()) {
+
             double rangeRe = Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe());
             double rangeIm = Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm());
             double aspectRatio = rangeRe / rangeIm;
@@ -397,6 +420,8 @@ public class Main implements MouseListener {
             this.canvas.setPreferredSize(new Dimension(this.canvasWidth, this.canvasHeight));
             this.canvas.setMinimumSize(new Dimension(this.canvasWidth, this.canvasHeight));
             this.canvas.setMaximumSize(new Dimension(this.canvasWidth, this.canvasHeight));
+            this.frame.revalidate();
+
         } else {
 
             double widthFactor = canvas.getWidth() / (double) this.canvasWidth;
@@ -419,6 +444,8 @@ public class Main implements MouseListener {
     }
 
     private void setMandelbrotContext(Mandelbrot m) {
+        if (this.mandelbrot.equals(m) && !this.mandelbrot.hasBeenAborted())
+            return;
         this.mandelbrot = m;
     }
 
@@ -485,6 +512,18 @@ public class Main implements MouseListener {
         this.canvas.repaint();
     }
 
+    private void onResetView() {
+        this.mandelbrot.abort();
+        int width = this.canvasWidth;
+        int height = this.canvasHeight;
+        double rangeIm = 3;
+        double rangeRe = ((double) width / (double) height) * rangeIm;
+        this.setMandelbrotContext(new Mandelbrot(this.canvasWidth, this.canvasHeight, -rangeRe / 2, -rangeIm / 2,
+                rangeRe / 2, rangeIm / 2, mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient()));
+        this.canvas.repaint();
+
+    }
+
     private void updateInfoAboutC() {
 
         Mandelbrot mand = new Mandelbrot(1, 1, this.cursorRe, this.cursorIm, this.cursorRe, this.cursorIm,
@@ -526,13 +565,18 @@ public class Main implements MouseListener {
 
     @Override
     public void mouseClicked(MouseEvent e) {
-        // TODO Auto-generated method stub
+        if (e.getClickCount() == 2 && e.getButton() == MouseEvent.BUTTON1)
+            this.btnZoomIn.doClick();
+        if (e.getClickCount() == 2 && e.getButton() == MouseEvent.BUTTON3)
+            this.btnZoomOut.doClick();
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
         if (e.getButton() == MouseEvent.BUTTON1) {
             this.frame.requestFocus();
+            if (e.getX() >= this.canvasWidth || e.getY() >= this.canvasHeight)
+                return;
             double zOriginRe = mandelbrotDisplayed.getMinRe();
             double zOriginIm = mandelbrotDisplayed.getMaxIm();
             double s = Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe())
@@ -558,6 +602,28 @@ public class Main implements MouseListener {
     @Override
     public void mouseExited(MouseEvent e) {
         // TODO Auto-generated method stub
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_PLUS || e.getKeyCode() == KeyEvent.VK_ADD) {
+            this.btnZoomIn.doClick();
+        }
+        if (e.getKeyCode() == KeyEvent.VK_MINUS || e.getKeyCode() == KeyEvent.VK_SUBTRACT) {
+            this.btnZoomOut.doClick();
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+        // TODO Auto-generated method stub
+
     }
 
 }
