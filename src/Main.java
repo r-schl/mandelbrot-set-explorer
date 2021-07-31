@@ -565,10 +565,10 @@ public class Main implements MouseListener, KeyListener {
 
     @Override
     public void mouseClicked(MouseEvent e) {
-        if (e.getClickCount() == 2 && e.getButton() == MouseEvent.BUTTON1)
+        /* if (e.getClickCount() == 2 && e.getButton() == MouseEvent.BUTTON1)
             this.btnZoomIn.doClick();
         if (e.getClickCount() == 2 && e.getButton() == MouseEvent.BUTTON3)
-            this.btnZoomOut.doClick();
+            this.btnZoomOut.doClick(); */
     }
 
     @Override
