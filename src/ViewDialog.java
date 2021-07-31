@@ -28,7 +28,7 @@ public class ViewDialog extends JDialog {
         setResizable(false);
 
         pnlRoot = new JPanel();
-        pnlRoot.setBorder(new EmptyBorder(20, 10, 20, 10));
+        pnlRoot.setBorder(new EmptyBorder(10, 10, 10, 10));
         pnlRoot.setLayout(new BorderLayout());
 
         JLabel lblInfo = new JLabel(

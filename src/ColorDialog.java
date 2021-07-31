@@ -1,5 +1,4 @@
 
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -8,15 +7,12 @@ import javax.swing.border.*;
 import static javax.swing.BorderFactory.createEtchedBorder;
 import static javax.swing.BorderFactory.createTitledBorder;
 
-public class ConfigDialog extends JDialog {
+public class ColorDialog extends JDialog {
 
         JPanel pnlRoot;
         JPanel pnlMain;
 
-        JPanel pnlIterations;
         JPanel pnlColors;
-
-        JSpinner spnIterations;
 
         // Color for pixels inside the mandelbrot set
         JButton btnColorInside;
@@ -26,46 +22,26 @@ public class ConfigDialog extends JDialog {
         JButton[] btnsColorGradient;
         JPanel[] pnlsColorGradient;
 
-        public ConfigDialog(JFrame frame, Mandelbrot mandelbrot, TwoIntAndIntArrExecutable onConfirm) {
+        public ColorDialog(JFrame frame, Mandelbrot mandelbrot, OneIntAndIntArrExecutable onConfirm) {
                 super(frame, true);
 
-                setTitle("Konfiguration");
+                setTitle("Färbung konfigurieren");
                 setResizable(false);
 
                 pnlRoot = new JPanel();
-                pnlRoot.setBorder(new EmptyBorder(20, 10, 20, 10));
+                pnlRoot.setBorder(new EmptyBorder(10, 10, 10, 10));
                 pnlRoot.setLayout(new BorderLayout());
-
-                /*
-                 * JLabel lblInfo = new JLabel(
-                 * "<html>Der darzustellende Bereich der komplexen Zahlenebene wird durch folgende vier Werte definiert: </html>"
-                 * );
-                 * 
-                 * pnlRoot.add(lblInfo, BorderLayout.PAGE_START);
-                 */
 
                 pnlMain = new JPanel();
                 pnlMain.setLayout(new BoxLayout(pnlMain, BoxLayout.Y_AXIS));
 
-                pnlIterations = new JPanel();
-                pnlIterations.setLayout(new BoxLayout(pnlIterations, BoxLayout.Y_AXIS));
-                pnlIterations.setBorder(createTitledBorder(createEtchedBorder(), "Max. Anzahl an Iterationen (n_max)",
-                                TitledBorder.LEFT, TitledBorder.TOP));
-
-                spnIterations = new JSpinner();
-                spnIterations.setValue(mandelbrot.getNMax());
-                pnlIterations.add(spnIterations);
-
-                pnlMain.add(pnlIterations);
-
                 pnlColors = new JPanel();
                 pnlColors.setLayout(new BoxLayout(pnlColors, BoxLayout.X_AXIS));
-                pnlColors.setBorder(createTitledBorder(createEtchedBorder(), "Färbung der Mandelbrotmenge", TitledBorder.LEFT,
-                                TitledBorder.TOP));
+                
 
                 JPanel pnlColorInsideContainer = new JPanel();
                 pnlColorInsideContainer.setLayout(new BoxLayout(pnlColorInsideContainer, BoxLayout.X_AXIS));
-                pnlColorInsideContainer.setBorder(createTitledBorder(new EmptyBorder(0, 0, 0, 0), "innen",
+                pnlColorInsideContainer.setBorder(createTitledBorder(createEtchedBorder(), "c ∈ 𝕄",
                                 TitledBorder.LEFT, TitledBorder.TOP));
 
                 this.btnColorInside = new JButton();
@@ -89,12 +65,11 @@ public class ConfigDialog extends JDialog {
 
                 JPanel pnlColorGradientContainer = new JPanel();
                 pnlColorGradientContainer.setLayout(new BoxLayout(pnlColorGradientContainer, BoxLayout.X_AXIS));
-                pnlColorGradientContainer.setBorder(createTitledBorder(new EmptyBorder(0, 0, 0, 0),
-                                "äußerer Farbverlauf (n=n_max bis n=1)", TitledBorder.LEFT, TitledBorder.TOP));
+                pnlColorGradientContainer.setBorder(createTitledBorder(createEtchedBorder(),
+                                "äußerer Farbverlauf (n=n_max bis n=0)", TitledBorder.LEFT, TitledBorder.TOP));
 
                 this.btnsColorGradient = new JButton[5];
                 this.pnlsColorGradient = new JPanel[5];
-
 
                 for (int i = 0; i < 5; i++) {
                         this.btnsColorGradient[i] = new JButton();
@@ -107,8 +82,11 @@ public class ConfigDialog extends JDialog {
                                 for (int a = 0; a < this.btnsColorGradient.length; a++)
                                         if (a != k && !this.pnlsColorGradient[a].isOpaque())
                                                 nullCount++;
-                                new ColorPickerDialog(null, this.pnlsColorGradient[k].getBackground(),
-                                                (nullCount == 4) ? false : true, (Color c) -> {
+                                Color defaultColor = (this.pnlsColorGradient[k].isOpaque())
+                                                ? this.pnlsColorGradient[k].getBackground()
+                                                : null;
+                                new ColorPickerDialog(null, defaultColor, (nullCount == 4) ? false : true,
+                                                (Color c) -> {
                                                         if (c == null) {
                                                                 this.pnlsColorGradient[k].setOpaque(false);
                                                         } else {
@@ -154,8 +132,7 @@ public class ConfigDialog extends JDialog {
                                 for (int a = 0; a < pnlsColorGradient.length; a++)
                                         if (pnlsColorGradient[a].isOpaque())
                                                 newGradient[b++] = pnlsColorGradient[a].getBackground().getRGB();
-                                onConfirm.run((Integer) spnIterations.getValue(),
-                                                pnlColorInside.getBackground().getRGB(), newGradient);
+                                onConfirm.run(pnlColorInside.getBackground().getRGB(), newGradient);
                                 dispose();
                         }
 

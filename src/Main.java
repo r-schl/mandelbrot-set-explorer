@@ -33,9 +33,11 @@ public class Main implements MouseListener {
     FlowLayout frameFlowLayout;
     JCheckBox chkFixAspectRatio;
 
-    JCheckBox chkDrawOrbit;
-    JCheckBox chkDrawSet;
+    JLabel lblInfoAboutC;
+
     JProgressBar progressBar;
+
+    JSpinner spnIterations;
 
     final String FRAME_TITLE = "Mandelbrot-Viewer";
     final String VIEW_PANEL_TITLE = "View-Window";
@@ -50,8 +52,6 @@ public class Main implements MouseListener {
     Mandelbrot mandelbrot;
     Mandelbrot mandelbrotDisplayed;
     BufferedImage image;
-
-    Orbit orbit;
 
     double cursorRe = 0;
     double cursorIm = 0;
@@ -112,23 +112,40 @@ public class Main implements MouseListener {
         JPanel pnlConfig = new JPanel();
         pnlConfig.setLayout(new BoxLayout(pnlConfig, BoxLayout.X_AXIS));
         pnlConfig.setBackground(Color.WHITE);
-        pnlConfig.setBorder(
-                createTitledBorder(createEtchedBorder(), "Einstellungen", TitledBorder.LEFT, TitledBorder.TOP));
-        JButton btnConfig = new JButton("Konfigurieren");
-        btnConfig.setToolTipText("Maximale Iterationsanzahl (n_max) und Färbung einstellen");
+        pnlConfig.setBorder(createTitledBorder(createEtchedBorder(), "Färbung", TitledBorder.LEFT, TitledBorder.TOP));
+        JButton btnConfig = new JButton("Anpassen ✎");
+        btnConfig.setToolTipText("Verwendete Farben anpassen");
         btnConfig.addActionListener(e -> onBtnConfigClicked());
         pnlConfig.add(btnConfig);
 
         pnlMenuBar.add(pnlConfig);
 
-        pnlMenuBar.add(Box.createRigidArea(new Dimension(10, 0)));
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(6, 0)));
+
+        JPanel pnlIterations = new JPanel();
+        pnlIterations.setLayout(new BoxLayout(pnlIterations, BoxLayout.X_AXIS));
+        pnlIterations.setBackground(Color.WHITE);
+        pnlIterations.setBorder(createTitledBorder(createEtchedBorder(), "nMax", TitledBorder.LEFT, TitledBorder.TOP));
+
+        spnIterations = new JSpinner();
+        spnIterations.addChangeListener(e -> {
+            onIterationsChange();
+        });
+        spnIterations.setPreferredSize(new Dimension(70, 21));
+        spnIterations.setMaximumSize(new Dimension(70, 21));
+        spnIterations.setMinimumSize(new Dimension(70, 21));
+
+        pnlIterations.add(spnIterations);
+        pnlMenuBar.add(pnlIterations);
+
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(6, 0)));
 
         JPanel pnlView = new JPanel();
         pnlView.setLayout(new BoxLayout(pnlView, BoxLayout.X_AXIS));
         pnlView.setBackground(Color.WHITE);
         pnlView.setBorder(
                 createTitledBorder(createEtchedBorder(), VIEW_PANEL_TITLE, TitledBorder.LEFT, TitledBorder.TOP));
-        JButton btnView = new JButton("Anpassen ✎");
+        JButton btnView = new JButton("Einstellen");
         btnView.setToolTipText("View-Window exakt anpassen");
         btnView.addActionListener(e -> onBtnViewClicked());
         pnlView.add(btnView);
@@ -160,35 +177,35 @@ public class Main implements MouseListener {
 
         pnlMenuBar.add(pnlView);
 
-        pnlMenuBar.add(Box.createRigidArea(new Dimension(10, 0)));
+        pnlMenuBar.add(Box.createRigidArea(new Dimension(6, 0)));
 
-       /*  JPanel pnlActions = new JPanel();
-        pnlActions.setLayout(new BoxLayout(pnlActions, BoxLayout.X_AXIS));
-        pnlActions.setBackground(Color.WHITE);
-        pnlActions.setBorder(
-                createTitledBorder(createEtchedBorder(), "Darstellung", TitledBorder.LEFT, TitledBorder.TOP));
-        chkDrawSet = new JCheckBox(" Mandelbrotmenge ");
-        chkDrawSet.setToolTipText("Mandelbrotmenge anzeigen");
-        chkDrawSet.setSelected(true);
-        chkDrawSet.addActionListener(e -> onCheckSetChange());
-        pnlActions.add(chkDrawSet); 
-
-        chkDrawOrbit = new JCheckBox(" Orbit für c ");
-        chkDrawOrbit.setToolTipText("Orbit für die Zahl c anzeigen");
-        chkDrawOrbit.addActionListener(e -> onCheckOrbitChange());
-        pnlActions.add(chkDrawOrbit);
-
-        pnlMenuBar.add(pnlActions);
-
-      
-        pnlMenuBar.add(Box.createRigidArea(new Dimension(10, 0)));
-          */
+        /*
+         * JPanel pnlActions = new JPanel(); pnlActions.setLayout(new
+         * BoxLayout(pnlActions, BoxLayout.X_AXIS));
+         * pnlActions.setBackground(Color.WHITE); pnlActions.setBorder(
+         * createTitledBorder(createEtchedBorder(), "Darstellung", TitledBorder.LEFT,
+         * TitledBorder.TOP)); chkDrawSet = new JCheckBox(" Mandelbrotmenge ");
+         * chkDrawSet.setToolTipText("Mandelbrotmenge anzeigen");
+         * chkDrawSet.setSelected(true); chkDrawSet.addActionListener(e ->
+         * onCheckSetChange()); pnlActions.add(chkDrawSet);
+         * 
+         * chkDrawOrbit = new JCheckBox(" Orbit für c ");
+         * chkDrawOrbit.setToolTipText("Orbit für die Zahl c anzeigen");
+         * chkDrawOrbit.addActionListener(e -> onCheckOrbitChange());
+         * pnlActions.add(chkDrawOrbit);
+         * 
+         * pnlMenuBar.add(pnlActions);
+         * 
+         * 
+         * pnlMenuBar.add(Box.createRigidArea(new Dimension(10, 0)));
+         */
 
         JPanel pnlCursorContainer = new JPanel();
         pnlCursorContainer.setLayout(new BoxLayout(pnlCursorContainer, BoxLayout.X_AXIS));
         pnlCursorContainer.setBackground(Color.WHITE);
         pnlCursorContainer.setBorder(
                 createTitledBorder(createEtchedBorder(), CURSOR_PANEL_TITLE, TitledBorder.LEFT, TitledBorder.TOP));
+
         JPanel pnlCursor = new JPanel();
         pnlCursor.setPreferredSize(new Dimension(222, 21));
         pnlCursor.setMinimumSize(new Dimension(222, 21));
@@ -212,7 +229,19 @@ public class Main implements MouseListener {
         pnlCursor.add(txfCursorIm);
 
         pnlCursorContainer.add(pnlCursor);
+        JSeparator sep = new JSeparator(SwingConstants.VERTICAL);
+        sep.setPreferredSize(new Dimension(5, 21));
+        sep.setMaximumSize(new Dimension(5, 21));
+        sep.setMinimumSize(new Dimension(5, 21));
 
+        pnlCursorContainer.add(Box.createRigidArea(new Dimension(8, 0)));
+        pnlCursorContainer.add(sep);
+        pnlCursorContainer.add(Box.createRigidArea(new Dimension(3, 0)));
+
+        lblInfoAboutC = new JLabel();
+       // lblInfoAboutC.setOpaque(true);
+        pnlCursorContainer.add(lblInfoAboutC);
+        pnlCursorContainer.add(Box.createRigidArea(new Dimension(3, 0)));
         pnlMenuBar.add(pnlCursorContainer);
 
         frame.setJMenuBar(mnBar);
@@ -252,10 +281,12 @@ public class Main implements MouseListener {
         this.canvasHeight = canvas.getHeight();
         double ar = (double) this.canvasWidth / this.canvasHeight;
         this.mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, -1.5 * ar, -1.5, 1.5 * ar, 1.5, 100,
-                0x000000, new int[] { 0xff003c, 0xff003c, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF });
+                0x000000, new int[] { 0xff003c, 0xFFFFFF });
         this.mandelbrotDisplayed = new Mandelbrot(this.canvasWidth, this.canvasHeight, -1.5 * ar, -1.5, 1.5 * ar, 1.5,
-                100, 0x000000, new int[] { 0xff003c, 0xff003c, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF });
+                100, 0x000000, new int[] { 0xff003c, 0xFFFFFF});
 
+        this.spnIterations.setValue(mandelbrot.getNMax());
+        this.lblInfoAboutC.setText("c ∈ 𝕄 (" + this.mandelbrot.getNMax() + "/" + this.mandelbrot.getNMax() + ")");
         putCursor(0, 0);
         this.canvas.repaint();
     }
@@ -286,59 +317,22 @@ public class Main implements MouseListener {
         if (this.shouldDrawCursor)
             drawCursor(g);
 
-        if (this.chkDrawSet.isSelected()) {
-            if (this.mandelbrot.isBuilt()) {
-                this.mandelbrotDisplayed = this.mandelbrot;
-                image.setRGB(0, 0, canvasWidth, canvasHeight, this.mandelbrot.getImage(), 0, canvasWidth);
-                g.drawImage(image, 0, 0, null);
-                drawCursor(g);
-            } else if (!this.mandelbrot.isBuilding()) {
-                this.mandelbrot.build((double percentage) -> {
-                    this.progressBar.setValue((int) percentage);
-                }, () -> {
-                    if (this.mandelbrot.getImage() == null)
-                        return;
-                    this.canvas.repaint();
-                });
-            }
-        } else {
+        if (this.mandelbrot.isBuilt()) {
             this.mandelbrotDisplayed = this.mandelbrot;
-            g.setColor(Color.WHITE);
+            image.setRGB(0, 0, canvasWidth, canvasHeight, this.mandelbrot.getImage(), 0, canvasWidth);
             g.drawImage(image, 0, 0, null);
             drawCursor(g);
+            updateInfoAboutC();
+        } else if (!this.mandelbrot.isBuilding()) {
+            this.mandelbrot.build((double percentage) -> {
+                this.progressBar.setValue((int) percentage);
+            }, () -> {
+                if (this.mandelbrot.getImage() == null)
+                    return;
+                this.canvas.repaint();
+            });
         }
 
-        if (this.chkDrawOrbit.isSelected()) {
-            if (this.orbit.isBuilt()) {
-                g.setColor(Color.BLUE);
-                double[] data = this.orbit.getData();
-                int lastPixX = getPixX(data[0]);
-                int lastPixY = getPixY(data[1]);
-                for (int i = 2; i < data.length - 1; i += 2) {
-                    int pixX = getPixX(data[i]);
-                    int pixY = getPixY(data[i + 1]);
-                    g.drawLine(lastPixX, lastPixY, pixX, pixY);
-                    lastPixX = pixX;
-                    lastPixY = pixY;
-                }
-            } else if (!this.orbit.isBuilding()) {
-                this.orbit.build(() -> {
-                    this.canvas.repaint();
-                });
-            }
-        }
-    }
-
-    private int getPixX(double re) {
-        int pixX = (int) (((re - mandelbrotDisplayed.getMinRe()) * canvasWidth)
-                / Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe()));
-        return pixX;
-    }
-
-    private int getPixY(double im) {
-        int pixY = (int) (this.canvasHeight - (((-im + mandelbrotDisplayed.getMinIm()) * this.canvasHeight)
-                / -Math.abs(mandelbrotDisplayed.getMaxIm() - mandelbrotDisplayed.getMinIm())));
-        return pixY;
     }
 
     private void drawCursor(Graphics2D g) {
@@ -395,9 +389,9 @@ public class Main implements MouseListener {
             this.canvasWidth = (int) newCanvasWidth;
             this.canvasHeight = (int) newCanvasHeight;
 
-            mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(),
+            this.setMandelbrotContext(new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(),
                     mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), mandelbrot.getNMax(),
-                    mandelbrot.getColorInside(), mandelbrot.getGradient());
+                    mandelbrot.getColorInside(), mandelbrot.getGradient()));
 
             this.canvas.setSize(new Dimension(this.canvasWidth, this.canvasHeight));
             this.canvas.setPreferredSize(new Dimension(this.canvasWidth, this.canvasHeight));
@@ -416,18 +410,23 @@ public class Main implements MouseListener {
             double minImNew = mandelbrot.getMaxIm()
                     - Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm()) * heightFactor;
 
-            mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(), minImNew, maxReNew,
-                    mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient());
+            this.setMandelbrotContext(new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(),
+                    minImNew, maxReNew, mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getColorInside(),
+                    mandelbrot.getGradient()));
         }
         this.mandelbrotDisplayed = this.mandelbrot;
         this.canvas.repaint();
     }
 
+    private void setMandelbrotContext(Mandelbrot m) {
+        this.mandelbrot = m;
+    }
+
     private void onBtnViewClicked() {
         try {
             ViewDialog dialog = new ViewDialog(frame, mandelbrot, (double[] arr) -> {
-                mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, arr[0], arr[1], arr[2], arr[3],
-                        mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient());
+                this.setMandelbrotContext(new Mandelbrot(this.canvasWidth, this.canvasHeight, arr[0], arr[1], arr[2],
+                        arr[3], mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient()));
                 this.chkFixAspectRatio.setSelected(true);
                 frame.getComponentListeners()[0].componentResized(null);
             });
@@ -441,11 +440,11 @@ public class Main implements MouseListener {
 
     private void onBtnConfigClicked() {
         try {
-            ConfigDialog dialog = new ConfigDialog(frame, mandelbrot, (int nMax, int colorInside, int[] gradient) -> {
+            ColorDialog dialog = new ColorDialog(frame, mandelbrot, (int colorInside, int[] gradient) -> {
                 this.mandelbrot.abort();
-                this.mandelbrot = new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(),
-                        mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), nMax, colorInside,
-                        gradient);
+                this.setMandelbrotContext(new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(),
+                        mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), mandelbrot.getNMax(),
+                        colorInside, gradient));
                 this.canvas.repaint();
             });
             dialog.setModalityType(ModalityType.APPLICATION_MODAL);
@@ -461,25 +460,44 @@ public class Main implements MouseListener {
         this.canvas.repaint();
     }
 
-    private void onCheckSetChange() {
-        this.resetImage();
-        this.canvas.repaint();
-    }
-
-    private void onCheckOrbitChange() {
+    private void onIterationsChange() {
+        int nMax = (int) this.spnIterations.getValue();
+        if (nMax < 0) {
+            this.spnIterations.setValue(0);
+            return;
+        }
+        this.mandelbrot.abort();
+        this.setMandelbrotContext(new Mandelbrot(this.canvasWidth, this.canvasHeight, mandelbrot.getMinRe(),
+                mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), nMax, mandelbrot.getColorInside(),
+                mandelbrot.getGradient()));
         this.canvas.repaint();
     }
 
     private void onZoomIn() {
         this.mandelbrot.abort();
-        this.mandelbrot = this.mandelbrot.getZoom(cursorRe, cursorIm, 2.0);
+        this.setMandelbrotContext(this.mandelbrot.getZoom(cursorRe, cursorIm, 2.0));
         this.canvas.repaint();
     }
 
     private void onZoomOut() {
         this.mandelbrot.abort();
-        this.mandelbrot = this.mandelbrot.getZoom(cursorRe, cursorIm, 0.5);
+        this.setMandelbrotContext(this.mandelbrot.getZoom(cursorRe, cursorIm, 0.5));
         this.canvas.repaint();
+    }
+
+    private void updateInfoAboutC() {
+
+        Mandelbrot mand = new Mandelbrot(1, 1, this.cursorRe, this.cursorIm, this.cursorRe, this.cursorIm,
+                this.mandelbrot.getNMax(), 0x000000, new int[] { 0xFFFFFF });
+        mand.build(() -> {
+            String txt = "c";
+            int[] data = mand.getData();
+            int iterations = data[0];
+            txt += (iterations == mand.getNMax() + 1) ? " ∈ " : " ∉ ";
+            txt += "𝕄" + " (" + (iterations - 1) + "/" + mand.getNMax() + ")";
+            this.lblInfoAboutC.setText(txt);
+        });
+
     }
 
     boolean blockOnCursorChange = false;
@@ -492,7 +510,6 @@ public class Main implements MouseListener {
             } catch (Exception e) {
                 // wrong input
             }
-            this.orbit = new Orbit(this.cursorRe, this.cursorIm, this.mandelbrot);
             this.canvas.repaint();
         }
     }
@@ -515,6 +532,7 @@ public class Main implements MouseListener {
     @Override
     public void mousePressed(MouseEvent e) {
         if (e.getButton() == MouseEvent.BUTTON1) {
+            this.frame.requestFocus();
             double zOriginRe = mandelbrotDisplayed.getMinRe();
             double zOriginIm = mandelbrotDisplayed.getMaxIm();
             double s = Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe())

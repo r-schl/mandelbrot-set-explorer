@@ -17,6 +17,8 @@ public class ColorPickerDialog extends JDialog {
     JPanel pnlRoot;
     JPanel pnlColorPreview;
 
+    boolean nothingSelected;
+
     public ColorPickerDialog(JFrame frame, Color color, boolean isAbleToSetNull, Executable<Color> onConfirm) {
         super(frame, true);
         setTitle("Bitte wählen Sie eine Farbe aus");
@@ -26,8 +28,13 @@ public class ColorPickerDialog extends JDialog {
         pnlRoot.setLayout(new BorderLayout());
         pnlRoot.setMinimumSize(new Dimension(800, 400));
 
-        colorChooser = new JColorChooser(color);
+        colorChooser = new JColorChooser();
+        if (color == null)
+            nothingSelected = true;
+        else
+            colorChooser.getSelectionModel().setSelectedColor(color);
         colorChooser.getSelectionModel().addChangeListener(e -> {
+            nothingSelected = false;
             pnlColorPreview.setBackground(colorChooser.getColor());
         });
         colorChooser.setPreviewPanel(new JPanel());
@@ -42,7 +49,10 @@ public class ColorPickerDialog extends JDialog {
 
         JButton btnConfirm = new JButton("Bestätigen ✓");
         btnConfirm.addActionListener(e -> {
-            onConfirm.run(colorChooser.getColor());
+            if (nothingSelected)
+                onConfirm.run(null);
+            else
+                onConfirm.run(colorChooser.getColor());
             dispose();
         });
         pnlBottom.add(btnConfirm);
@@ -63,9 +73,9 @@ public class ColorPickerDialog extends JDialog {
         setLocation((Toolkit.getDefaultToolkit().getScreenSize().width) / 2 - getWidth() / 2,
                 (Toolkit.getDefaultToolkit().getScreenSize().height) / 2 - getHeight() / 2);
 
-                setModalityType(ModalityType.APPLICATION_MODAL);
-                setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-                setVisible(true);
+        setModalityType(ModalityType.APPLICATION_MODAL);
+        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        setVisible(true);
 
     }
 }

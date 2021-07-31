@@ -11,8 +11,8 @@ public class Orbit {
     private double cIm;
     private Mandelbrot mandelbrot;
 
-    private SwingWorker<double[], Integer> worker;
-    private double[] data;
+    private SwingWorker<int[], Integer> worker;
+    private int[] data;
 
     private boolean isBuilding;
     private boolean isBuilt;
@@ -23,7 +23,15 @@ public class Orbit {
         this.mandelbrot = mandelbrot;
     }
 
-    public double[] getData() {
+    public double getCRe() {
+        return this.cRe;
+    }
+
+    public double getCIm() {
+        return this.cIm;
+    }
+
+    public int[] getData() {
         return this.data;
     }
 
@@ -37,27 +45,27 @@ public class Orbit {
 
     public void build(Runnable onFinish) {
         this.isBuilding = true;
-        this.worker = new SwingWorker<double[], Integer>() {
+        this.worker = new SwingWorker<int[], Integer>() {
 
             @Override
-            protected double[] doInBackground() throws Exception {
+            protected int[] doInBackground() throws Exception {
                 double zRe = 0.0D;
                 double zIm = 0.0D;
-                ArrayList<Double> data = new ArrayList<>();
-                data.add(zRe);
-                data.add(zIm);
+                ArrayList<Integer> data = new ArrayList<>();
+                data.add(getPixX(zRe));
+                data.add(getPixY(zIm));
                 for (int n = 1; n <= mandelbrot.getNMax(); ++n) {
                     double sqrZRe = zRe * zRe - zIm * zIm;
                     double sqrZIm = zRe * zIm + zIm * zRe;
                     zRe = sqrZRe + cRe;
                     zIm = sqrZIm + cIm;
                     if (zRe * zRe + zIm * zIm > ESCAPE_RADIUS * ESCAPE_RADIUS) {
-                        return data.stream().mapToDouble(d -> d).toArray();
+                        return data.stream().mapToInt(i -> i).toArray();
                     }
-                    data.add(zRe);
-                    data.add(zIm);
+                    data.add(getPixX(zRe));
+                    data.add(getPixY(zIm));
                 }
-                return data.stream().mapToDouble(d -> d).toArray();
+                return data.stream().mapToInt(i -> i).toArray();
             }
 
             public void done() {
@@ -71,8 +79,19 @@ public class Orbit {
                 onFinish.run();
             }
         };
-
         this.worker.execute();
+    }
+
+    private int getPixX(double re) {
+        int pixX = (int) (((re - mandelbrot.getMinRe()) * mandelbrot.getWidth())
+                / Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe()));
+        return pixX;
+    }
+
+    private int getPixY(double im) {
+        int pixY = (int) (mandelbrot.getHeight() - (((-im + mandelbrot.getMinIm()) * mandelbrot.getHeight())
+                / -Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm())));
+        return pixY;
     }
 
     public void abort() {
