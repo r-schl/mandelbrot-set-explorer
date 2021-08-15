@@ -23,7 +23,7 @@ public class Mandelbrot {
     private static final String ASPECT_RATIO_ERR = ">> Aspect ratios of the image and the section of the complex plane must be the same. <<";
     private static final int PROGRESS_BAR_WIDTH = 30;
 
-    private final int NUMTHREADS = Runtime.getRuntime().availableProcessors();
+    public final int NUMTHREADS = Runtime.getRuntime().availableProcessors();
     private final int ESCAPE_RADIUS = 2;
 
     /**
@@ -320,14 +320,13 @@ public class Mandelbrot {
         }
 
         if (nMax == 0)
-            return new int[] { 0, color };
+            return new int[] { color };
 
         if (gradient.length == 1) {
-            int[] palette = new int[nMax + 2];
-            for (int i = 1; i < nMax + 1; i++) {
+            int[] palette = new int[nMax + 1];
+            for (int i = 0; i < nMax; i++)
                 palette[i] = gradient[0];
-            }
-            palette[nMax + 1] = color;
+            palette[nMax] = color;
             return palette;
         }
 
@@ -350,10 +349,11 @@ public class Mandelbrot {
         g2d.setPaint(p);
         g2d.fillRect(0, 0, nMax, 1);
         g2d.dispose();
-        int[] palette = new int[nMax + 2]; // because index 0 is placeholder
+
+        int[] palette = new int[nMax + 1];
         for (int i = 0; i < bi.getWidth(); i++)
-            palette[i + 1] = bi.getRGB(i, 0);
-        palette[nMax + 1] = color;
+            palette[i] = bi.getRGB(i, 0);
+        palette[nMax] = color;
         return palette;
     }
 
@@ -532,7 +532,7 @@ public class Mandelbrot {
     private int iterate(double cRe, double cIm) {
         double zRe = 0.0D;
         double zIm = 0.0D;
-        for (int n = 1; n <= this.nMax; ++n) {
+        for (int n = 0; n < this.nMax; ++n) {
             double sqrZRe = zRe * zRe - zIm * zIm;
             double sqrZIm = zRe * zIm + zIm * zRe;
             zRe = sqrZRe + cRe;
@@ -541,7 +541,7 @@ public class Mandelbrot {
                 return n;
             }
         }
-        return this.nMax + 1;
+        return this.nMax;
     }
 
     @FunctionalInterface
