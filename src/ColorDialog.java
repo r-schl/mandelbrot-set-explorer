@@ -66,7 +66,7 @@ public class ColorDialog extends JDialog {
                 JPanel pnlColorGradientContainer = new JPanel();
                 pnlColorGradientContainer.setLayout(new BoxLayout(pnlColorGradientContainer, BoxLayout.X_AXIS));
                 pnlColorGradientContainer.setBorder(createTitledBorder(createEtchedBorder(),
-                                "äußerer Farbverlauf (n=n_max bis n=0)", TitledBorder.LEFT, TitledBorder.TOP));
+                                "Farbverlauf (n=n_max-1 bis n=0)", TitledBorder.LEFT, TitledBorder.TOP));
 
                 this.btnsColorGradient = new JButton[5];
                 this.pnlsColorGradient = new JPanel[5];
