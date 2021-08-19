@@ -5,7 +5,7 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.*;
 
-public class ViewDialog extends JDialog {
+public class ViewWindowDialog extends JDialog {
 
     JPanel pnlRoot;
     JPanel pnlMain;
@@ -20,7 +20,7 @@ public class ViewDialog extends JDialog {
     JLabel lblMaxRe;
     JLabel lblMaxIm;
 
-    public ViewDialog(Frame frame, Mandelbrot mandelbrot, DoubleArrExecutable onConfirm) {
+    public ViewWindowDialog(Frame frame, Mandelbrot mandelbrot, DoubleArrExecutable onConfirm) {
 
         super(frame, true);
 

@@ -6,17 +6,25 @@ import javax.swing.border.*;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
 import javax.swing.plaf.ButtonUI;
+import org.yaml.snakeyaml.error.*;
 import javax.swing.text.*;
-import javax.imageio.ImageIO;
 
+import org.yaml.snakeyaml.scanner.ScannerException;
+
+import javax.imageio.ImageIO;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.awt.image.*;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.awt.Dialog.*;
 import java.awt.font.*;
 import java.util.*;
+
+import javax.swing.filechooser.*;
 
 import static javax.swing.BorderFactory.createEtchedBorder;
 import static javax.swing.BorderFactory.createTitledBorder;
@@ -46,7 +54,7 @@ public class Main implements MouseListener, KeyListener {
 
     JSpinner spnIterations;
 
-    JPanel pnlExport;
+    JPanel pnlSaveAsPicture;
     JComboBox<String> cmbExportQuality;
 
     final String FRAME_TITLE = "Mandelbrot Fraktal-Generator";
@@ -71,13 +79,23 @@ public class Main implements MouseListener, KeyListener {
 
     boolean shouldDrawCursor = true;
 
+    String pathToOpen = null;
+
     public static void main(String[] args) {
-        Main main = new Main();
+        if (args.length == 1)
+            new Main(args[0]);
+        else
+            new Main();
     }
 
     boolean blockResizeEvent = false;
 
     public Main() {
+        SwingUtilities.invokeLater(this::init);
+    }
+
+    public Main(String path) {
+        pathToOpen = path;
         SwingUtilities.invokeLater(this::init);
     }
 
@@ -125,20 +143,21 @@ public class Main implements MouseListener, KeyListener {
         pnlMenuBar.setBorder(new EmptyBorder(4, 10, 4, 10));
         mnBar.add(pnlMenuBar, BorderLayout.CENTER);
 
-        pnlExport = new JPanel();
-        pnlExport.setLayout(new BoxLayout(pnlExport, BoxLayout.X_AXIS));
-        pnlExport.setBackground(Color.WHITE);
-        pnlExport.setBorder(
-                createTitledBorder(createEtchedBorder(), "Exportieren", TitledBorder.LEFT, TitledBorder.TOP));
+        JPanel pnlExportImport = new JPanel();
+        pnlExportImport.setLayout(new BoxLayout(pnlExportImport, BoxLayout.X_AXIS));
+        pnlExportImport.setBackground(Color.WHITE);
+        pnlExportImport
+                .setBorder(createTitledBorder(createEtchedBorder(), "Datei", TitledBorder.LEFT, TitledBorder.TOP));
 
-        cmbExportQuality = new JComboBox<>();
-        cmbExportQuality.setFocusable(false);
-        cmbExportQuality.setPreferredSize(new Dimension(120, 20));
-        cmbExportQuality.setMinimumSize(new Dimension(120, 20));
-        cmbExportQuality.setMaximumSize(new Dimension(120, 20));
-        pnlExport.add(cmbExportQuality);
+        ImageButton btnImport = new ImageButton("res/open.png");
+        btnImport.addActionListener(e -> onImport());
+        btnImport.setFocusable(false);
+        btnImport.setPreferredSize(new Dimension(21, 21));
+        btnImport.setMinimumSize(new Dimension(21, 21));
+        btnImport.setMaximumSize(new Dimension(21, 21));
+        pnlExportImport.add(btnImport);
 
-        pnlExport.add(Box.createRigidArea(new Dimension(3, 0)));
+        pnlExportImport.add(Box.createRigidArea(new Dimension(2, 0)));
 
         ImageButton btnExport = new ImageButton("res/save.png");
         btnExport.addActionListener(e -> onExport());
@@ -146,15 +165,41 @@ public class Main implements MouseListener, KeyListener {
         btnExport.setPreferredSize(new Dimension(21, 21));
         btnExport.setMinimumSize(new Dimension(21, 21));
         btnExport.setMaximumSize(new Dimension(21, 21));
-        pnlExport.add(btnExport);
+        pnlExportImport.add(btnExport);
 
-        pnlMenuBar.add(pnlExport);
+        pnlMenuBar.add(pnlExportImport);
+
+        pnlSaveAsPicture = new JPanel();
+        pnlSaveAsPicture.setLayout(new BoxLayout(pnlSaveAsPicture, BoxLayout.X_AXIS));
+        pnlSaveAsPicture.setBackground(Color.WHITE);
+        pnlSaveAsPicture.setBorder(
+                createTitledBorder(createEtchedBorder(), "Als Bild speichern", TitledBorder.LEFT, TitledBorder.TOP));
+
+        cmbExportQuality = new JComboBox<>();
+        cmbExportQuality.setFocusable(false);
+        cmbExportQuality.setPreferredSize(new Dimension(110, 20));
+        cmbExportQuality.setMinimumSize(new Dimension(110, 20));
+        cmbExportQuality.setMaximumSize(new Dimension(110, 20));
+        pnlSaveAsPicture.add(cmbExportQuality);
+
+        pnlSaveAsPicture.add(Box.createRigidArea(new Dimension(2, 0)));
+
+        ImageButton btnSave = new ImageButton("res/checkmark.png");
+        btnSave.addActionListener(e -> onSaveAsPicture());
+        btnSave.setFocusable(false);
+        btnSave.setPreferredSize(new Dimension(21, 21));
+        btnSave.setMinimumSize(new Dimension(21, 21));
+        btnSave.setMaximumSize(new Dimension(21, 21));
+        pnlSaveAsPicture.add(btnSave);
+
+        pnlMenuBar.add(pnlSaveAsPicture);
 
         JPanel pnlConfig = new JPanel();
         pnlConfig.setLayout(new BoxLayout(pnlConfig, BoxLayout.X_AXIS));
         pnlConfig.setBackground(Color.WHITE);
         pnlConfig.setBorder(createTitledBorder(createEtchedBorder(), "Färbung", TitledBorder.LEFT, TitledBorder.TOP));
-        JButton btnConfig = new JButton("Anpassen ✎");
+        JButton btnConfig = new JButton("Anpassen");
+        btnConfig.setMargin(new Insets(2, 6, 2, 6));
         btnConfig.setFocusable(false);
         btnConfig.setToolTipText("Verwendete Farben anpassen");
         btnConfig.addActionListener(e -> onBtnConfigClicked());
@@ -189,6 +234,7 @@ public class Main implements MouseListener, KeyListener {
         pnlView.setBorder(
                 createTitledBorder(createEtchedBorder(), VIEW_PANEL_TITLE, TitledBorder.LEFT, TitledBorder.TOP));
         JButton btnView = new JButton("Ändern");
+        btnView.setMargin(new Insets(2, 6, 2, 6));
         btnView.setFocusable(false);
         btnView.setToolTipText("View-Window exakt anpassen");
         btnView.addActionListener(e -> onBtnViewClicked());
@@ -280,7 +326,7 @@ public class Main implements MouseListener, KeyListener {
             onCursorChange();
         });
         pnlCursor.add(txfCursorRe);
-        JLabel lblCursorIm = new JLabel("  Im(c) = ");
+        JLabel lblCursorIm = new JLabel(" Im(c) = ");
         pnlCursor.add(lblCursorIm);
         txfCursorIm = new JTextField(6);
 
@@ -370,12 +416,52 @@ public class Main implements MouseListener, KeyListener {
         }
 
         putCursor(0, 0);
+        if (pathToOpen != null)
+            importFile(pathToOpen);
         this.canvas.repaint();
     }
 
     private void onExport() {
         JFileChooser fileChooser = new JFileChooser();
-        int option = fileChooser.showSaveDialog(frame);
+        fileChooser.setDialogTitle("Speichern unter");
+        fileChooser.setMultiSelectionEnabled(false);
+        FileNameExtensionFilter filter = new FileNameExtensionFilter(".mandelbrot", "mandelbrot", "text");
+        fileChooser.setFileFilter(filter);
+        int option = fileChooser.showDialog(frame, "Speichern");
+        if (option == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            this.mandelbrot.exportYaml(file.getAbsolutePath());
+        }
+    }
+
+    private void importFile(String path) {
+        try {
+            this.mandelbrot = Mandelbrot.fromYamlFile(path);
+            this.spnIterations.setValue(this.mandelbrot.getNMax());
+            this.chkFixAspectRatio.setSelected(true);
+        } catch (FileNotFoundException | YAMLException e) {
+            new MessageDialog("Fehler!",
+                    "<html> Die Datei ist beschädigt! <br> Sie konnte daher nicht geöffnet werden. <html>");
+        }
+        this.canvas.repaint();
+    }
+
+    private void onImport() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Datei öffnen");
+        FileNameExtensionFilter filter = new FileNameExtensionFilter(".mandelbrot", "mandelbrot", "text");
+        fileChooser.setFileFilter(filter);
+        int option = fileChooser.showDialog(frame, "Öffnen");
+        if (option == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            this.importFile(file.getAbsolutePath());
+        }
+    }
+
+    private void onSaveAsPicture() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Als Bild speichern");
+        int option = fileChooser.showDialog(frame, "Als Bild speichern");
         if (option == JFileChooser.APPROVE_OPTION) {
             File file = fileChooser.getSelectedFile();
             int index = this.cmbExportQuality.getSelectedIndex();
@@ -383,9 +469,10 @@ public class Main implements MouseListener, KeyListener {
             int w = this.imgWidth * factor;
             int h = this.imgHeight * factor;
             Mandelbrot m = new Mandelbrot(w, h, mandelbrot.getMinRe(), mandelbrot.getMinIm(), mandelbrot.getMaxRe(),
-                    mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient());
+                    mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getColorInside(),
+                    mandelbrot.getColorGradient());
 
-            SaveProgressDialog dialog = new SaveProgressDialog(m, file);
+            ExportProgressDialog dialog = new ExportProgressDialog(m, file);
             dialog.setModalityType(ModalityType.APPLICATION_MODAL);
             dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
             dialog.setVisible(true);
@@ -503,7 +590,7 @@ public class Main implements MouseListener, KeyListener {
 
             this.setMandelbrotContext(new Mandelbrot(this.imgWidth, this.imgHeight, mandelbrot.getMinRe(),
                     mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), mandelbrot.getNMax(),
-                    mandelbrot.getColorInside(), mandelbrot.getGradient()));
+                    mandelbrot.getColorInside(), mandelbrot.getColorGradient()));
 
             // resetImage();
 
@@ -522,7 +609,7 @@ public class Main implements MouseListener, KeyListener {
 
             this.setMandelbrotContext(new Mandelbrot(this.imgWidth, this.imgHeight, mandelbrot.getMinRe(), minImNew,
                     maxReNew, mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getColorInside(),
-                    mandelbrot.getGradient()));
+                    mandelbrot.getColorGradient()));
 
             // this.mandelbrotDisplayed = this.mandelbrot;
         }
@@ -538,9 +625,9 @@ public class Main implements MouseListener, KeyListener {
 
     private void onBtnViewClicked() {
         try {
-            ViewDialog dialog = new ViewDialog(frame, mandelbrot, (double[] arr) -> {
+            ViewWindowDialog dialog = new ViewWindowDialog(frame, mandelbrot, (double[] arr) -> {
                 this.setMandelbrotContext(new Mandelbrot(this.imgWidth, this.imgHeight, arr[0], arr[1], arr[2], arr[3],
-                        mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient()));
+                        mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getColorGradient()));
                 this.chkFixAspectRatio.setSelected(true);
                 frame.getComponentListeners()[0].componentResized(null);
             });
@@ -554,7 +641,7 @@ public class Main implements MouseListener, KeyListener {
 
     private void onBtnConfigClicked() {
         try {
-            ColorDialog dialog = new ColorDialog(frame, mandelbrot, (int colorInside, int[] gradient) -> {
+            ColoringDialog dialog = new ColoringDialog(frame, mandelbrot, (int colorInside, int[] gradient) -> {
                 this.mandelbrot.abort();
                 this.setMandelbrotContext(new Mandelbrot(this.imgWidth, this.imgHeight, mandelbrot.getMinRe(),
                         mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), mandelbrot.getNMax(),
@@ -583,7 +670,7 @@ public class Main implements MouseListener, KeyListener {
         this.mandelbrot.abort();
         this.setMandelbrotContext(new Mandelbrot(this.imgWidth, this.imgHeight, mandelbrot.getMinRe(),
                 mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), nMax, mandelbrot.getColorInside(),
-                mandelbrot.getGradient()));
+                mandelbrot.getColorGradient()));
         this.canvas.repaint();
     }
 
@@ -606,7 +693,7 @@ public class Main implements MouseListener, KeyListener {
         double rangeIm = 3;
         double rangeRe = ((double) width / (double) height) * rangeIm;
         this.setMandelbrotContext(new Mandelbrot(this.imgWidth, this.imgHeight, -rangeRe / 2, -rangeIm / 2, rangeRe / 2,
-                rangeIm / 2, mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getGradient()));
+                rangeIm / 2, mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getColorGradient()));
         this.canvas.repaint();
 
     }
@@ -616,11 +703,11 @@ public class Main implements MouseListener, KeyListener {
         Mandelbrot mand = new Mandelbrot(1, 1, this.cursorRe, this.cursorIm, this.cursorRe, this.cursorIm,
                 this.mandelbrot.getNMax(), 0x000000, new int[] { 0xFFFFFF });
         mand.build(() -> {
-            String txt = "c";
+            String txt = "";
             int[] data = mand.getData();
             int iterations = data[0];
-            txt += (iterations == mand.getNMax() + 1) ? " ∈ " : " ∉ ";
-            txt += "𝕄" + " (" + (iterations) + "/" + mand.getNMax() + ")";
+            // txt += ((iterations == mand.getNMax() + 1) ? " ∈ " : " ∉ ") + "𝕄";
+            txt += "(" + (iterations) + "/" + mand.getNMax() + ")";
             this.lblInfoAboutC.setText(txt);
         });
 

@@ -5,12 +5,12 @@ import java.io.File;
 import javax.swing.*;
 import javax.swing.border.*;
 
-public class SaveProgressDialog extends JDialog {
+public class ExportProgressDialog extends JDialog {
 
     JPanel pnlRoot;
     JProgressBar progressBar;
 
-    public SaveProgressDialog(Mandelbrot m, File file) {
+    public ExportProgressDialog(Mandelbrot m, File file) {
 
         this.setTitle("Exportieren...");
         pnlRoot = new JPanel();
@@ -33,7 +33,7 @@ public class SaveProgressDialog extends JDialog {
         m.build((double p) -> {
             this.progressBar.setValue((int) p);
         }, () -> {
-            m.export(file.getAbsolutePath());
+            m.saveAsPicture(file.getAbsolutePath());
             this.dispose();
         });
 

@@ -7,7 +7,7 @@ import javax.swing.border.*;
 import static javax.swing.BorderFactory.createEtchedBorder;
 import static javax.swing.BorderFactory.createTitledBorder;
 
-public class ColorDialog extends JDialog {
+public class ColoringDialog extends JDialog {
 
         JPanel pnlRoot;
         JPanel pnlMain;
@@ -22,7 +22,7 @@ public class ColorDialog extends JDialog {
         JButton[] btnsColorGradient;
         JPanel[] pnlsColorGradient;
 
-        public ColorDialog(JFrame frame, Mandelbrot mandelbrot, OneIntAndIntArrExecutable onConfirm) {
+        public ColoringDialog(JFrame frame, Mandelbrot mandelbrot, OneIntAndIntArrExecutable onConfirm) {
                 super(frame, true);
 
                 setTitle("Färbung konfigurieren");
@@ -96,8 +96,8 @@ public class ColorDialog extends JDialog {
                                                 });
                         });
 
-                        if (i < mandelbrot.getGradient().length) {
-                                int rgb = mandelbrot.getGradient()[i];
+                        if (i < mandelbrot.getColorGradient().length) {
+                                int rgb = mandelbrot.getColorGradient()[i];
                                 this.pnlsColorGradient[i].setBackground(new Color(rgb));
                                 this.pnlsColorGradient[i].setOpaque(true);
                         } else {
