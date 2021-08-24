@@ -51,11 +51,11 @@ public class Mandelbrot {
     private SwingWorker<int[], Integer>[] workers;
     private int[] palette;
 
-    private int imgWidth = -1; // X-dimension of the image in pixels
-    private int imgHeight = -1; // Y-dimension of the image in pixels
-
     private int width;
     private int height;
+
+    private int pictureWidth;
+    private int pictureHeight;
 
     private boolean isBuilt = false;
     private boolean isBuilding = false;
@@ -89,8 +89,9 @@ public class Mandelbrot {
             System.err.println(">> nMax must be greater than or equal to 0 <<");
             System.exit(-1);
         }
-        this.imgWidth = imgWidth;
-        this.imgHeight = imgHeight;
+        /*
+         * this.imgWidth = imgWidth; this.imgHeight = imgHeight;
+         */
         this.minRe = minRe;
         this.minIm = minIm;
         this.maxRe = maxRe;
@@ -113,12 +114,20 @@ public class Mandelbrot {
 
     // Get Methods
 
-    public int getImageWidth() {
-        return this.imgWidth;
+    public int getPictureWidth() {
+        return this.pictureWidth;
     }
 
-    public int getImageHeight() {
-        return this.imgHeight;
+    public int getPictureHeight() {
+        return this.pictureHeight;
+    }
+
+    public int getWidth() {
+        return this.width;
+    }
+
+    public int getHeight() {
+        return this.height;
     }
 
     public double getMinRe() {
@@ -155,12 +164,28 @@ public class Mandelbrot {
         return this.data;
     }
 
-    public int[] getImage() {
+    public int[] getRGBData() {
         if (!isBuilt)
             return null;
-        int[] img = new int[this.imgWidth * this.imgHeight];
+        int[] img = new int[this.width * this.height];
         for (int i = 0; i < this.data.length; ++i) {
             img[i] = this.palette[this.data[i]];
+        }
+        return img;
+    }
+
+    public int[] getPictureData() {
+        if (!isBuilt)
+            return null;
+        int[] img = new int[this.pictureWidth * this.pictureHeight];
+        int offsetX = (this.pictureWidth - this.width) / 2;
+        int offsetY = (this.pictureHeight - this.height) / 2;
+        int i = 0;
+        for (int y = offsetY; y < (this.pictureHeight - offsetY); y++) {
+            for (int x = offsetX; x < (this.pictureWidth - offsetX); x++) {
+                img[x * y] = this.palette[this.data[i]];
+                i++;
+            }
         }
         return img;
     }
@@ -215,9 +240,9 @@ public class Mandelbrot {
         if (!(o instanceof Mandelbrot))
             return false;
         Mandelbrot mandelbrot = (Mandelbrot) o;
-        if (this.imgWidth != mandelbrot.imgWidth)
+        if (this.pictureWidth != mandelbrot.pictureWidth)
             return false;
-        if (this.imgHeight != mandelbrot.imgHeight)
+        if (this.pictureHeight != mandelbrot.pictureHeight)
             return false;
         if (this.minRe != mandelbrot.minRe)
             return false;
@@ -297,9 +322,9 @@ public class Mandelbrot {
      */
     public void saveAsPicture(String path) {
         try {
-            int[] img = this.getImage();
-            BufferedImage image = new BufferedImage(this.imgWidth, this.imgHeight, 1);
-            image.setRGB(0, 0, this.imgWidth, this.imgHeight, img, 0, this.imgWidth);
+            int[] img = this.getPictureData();
+            BufferedImage image = new BufferedImage(this.pictureWidth, this.pictureHeight, 1);
+            image.setRGB(0, 0, this.pictureWidth, this.pictureHeight, img, 0, this.pictureWidth);
 
             try {
                 ImageIO.write(image, "jpg", new File(path));
@@ -365,13 +390,28 @@ public class Mandelbrot {
          * System.err.print(ASPECT_RATIO_ERR); System.exit(-1); }
          */
 
-        this.imgWidth = w;
-        this.imgHeight = h;
+        this.pictureWidth = w;
+        this.pictureHeight = h;
 
-        
+        System.out.println("wp (m) " + w + " hp (m) " + h);
 
-       // this.startTime = System.currentTimeMillis();
-        this.data = new int[this.imgWidth * this.imgHeight];
+        double rangeRe = Math.abs(maxRe - minRe);
+        double rangeIm = Math.abs(maxIm - minIm);
+        double aspectRatio = rangeRe / rangeIm;
+
+        System.out.println(rangeRe + " " + rangeIm + " " + aspectRatio);
+
+        this.width = (int) Math.ceil((double) this.pictureHeight * aspectRatio);
+        this.height = (int) this.pictureHeight;
+
+        if (this.width > this.pictureWidth) {
+            this.width = this.pictureWidth;
+            this.height = (int) Math.ceil((double) this.pictureWidth * (1.0d / aspectRatio));
+        }
+
+        System.out.println("width " + this.width + " height " + this.height);
+
+        this.data = new int[this.width * this.height];
         this.workers = new SwingWorker[this.NUMTHREADS];
         this.percentageCompleted = 0;
         this.rowsCompleted = 0;
@@ -392,13 +432,13 @@ public class Mandelbrot {
                 protected int[] doInBackground() {
 
                     this.xBegin = 0;
-                    this.xEnd = imgWidth;
+                    this.xEnd = width;
                     this.xRange = this.xEnd - this.xBegin;
-                    this.yBegin = k * (imgHeight / NUMTHREADS);
-                    this.yEnd = k * (imgHeight / NUMTHREADS) + imgHeight / NUMTHREADS;
+                    this.yBegin = k * (height / NUMTHREADS);
+                    this.yEnd = k * (height / NUMTHREADS) + height / NUMTHREADS;
 
                     if (k == NUMTHREADS - 1)
-                        this.yEnd = imgHeight;
+                        this.yEnd = height;
 
                     this.yRange = this.yEnd - this.yBegin;
 
@@ -411,7 +451,7 @@ public class Mandelbrot {
                             double py = (double) (this.yBegin + row);
                             double zOriginRe = minRe;
                             double zOriginIm = maxIm;
-                            double s = Math.abs(maxRe - minRe) / (double) imgWidth;
+                            double s = Math.abs(maxRe - minRe) / (double) width;
                             double cRe = zOriginRe + s * px;
                             double cIm = zOriginIm - s * py;
                             part[row * this.xRange + col] = iterate(cRe, cIm);
@@ -426,7 +466,7 @@ public class Mandelbrot {
                 protected void process(List<Integer> rows) {
                     if (isBuilding) {
                         rowsCompleted = rowsCompleted + rows.size();
-                        percentageCompleted = rowsCompleted * 100.0D / (double) imgHeight;
+                        percentageCompleted = rowsCompleted * 100.0D / (double) height;
                         onProgress.run(percentageCompleted);
                     }
                 }
@@ -434,8 +474,8 @@ public class Mandelbrot {
                 public void done() {
                     try {
                         int[] part = (int[]) this.get();
-                        int normalPartLength = imgWidth * ((k * (imgHeight / NUMTHREADS) + imgHeight / NUMTHREADS)
-                                - (k * (imgHeight / NUMTHREADS)));
+                        int normalPartLength = width
+                                * ((k * (height / NUMTHREADS) + height / NUMTHREADS) - (k * (height / NUMTHREADS)));
                         System.arraycopy(part, 0, data, normalPartLength * k, part.length);
                     } catch (ExecutionException | InterruptedException var3) {
                         String message = var3.getCause().getMessage();

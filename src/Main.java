@@ -67,9 +67,6 @@ public class Main implements MouseListener, KeyListener {
     // int canvasWidth;
     // int canvasHeight;
 
-    int imgWidth;
-    int imgHeight;
-
     Mandelbrot mandelbrot;
     Mandelbrot mandelbrotDisplayed;
     BufferedImage image;
@@ -169,14 +166,11 @@ public class Main implements MouseListener, KeyListener {
 
         pnlExportImport.add(Box.createRigidArea(new Dimension(5, 0)));
 
-
         JButton btnSaveAsPicture = new JButton("Als Bild speichern");
         btnSaveAsPicture.setFocusable(false);
         btnSaveAsPicture.setMargin(new Insets(2, 6, 2, 6));
 
         pnlExportImport.add(btnSaveAsPicture);
-
-
 
         pnlMenuBar.add(pnlExportImport);
 
@@ -402,10 +396,7 @@ public class Main implements MouseListener, KeyListener {
 
         frame.setVisible(true);
 
-        this.imgWidth = canvas.getWidth();
-        this.imgHeight = canvas.getHeight();
-
-        double ar = (double) this.imgWidth / this.imgHeight;
+        double ar = (double) canvas.getWidth() / canvas.getHeight();
         this.mandelbrot = new Mandelbrot(-1.5 * ar, -1.5, 1.5 * ar, 1.5, 100, 0x000000,
                 new int[] { 0xff003c, 0xFFFFFF });
         this.mandelbrotDisplayed = new Mandelbrot(-1.5 * ar, -1.5, 1.5 * ar, 1.5, 100, 0x000000,
@@ -478,8 +469,8 @@ public class Main implements MouseListener, KeyListener {
             File file = fileChooser.getSelectedFile();
             int index = this.cmbExportQuality.getSelectedIndex();
             int factor = index == 0 ? 1 : index == 1 ? 2 : 4;
-            int w = this.imgWidth * factor;
-            int h = this.imgHeight * factor;
+            int w = this.canvas.getWidth() * factor;
+            int h = this.canvas.getHeight() * factor;
             Mandelbrot m = new Mandelbrot(mandelbrot.getMinRe(), mandelbrot.getMinIm(), mandelbrot.getMaxRe(),
                     mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getColorInside(),
                     mandelbrot.getColorGradient());
@@ -489,13 +480,15 @@ public class Main implements MouseListener, KeyListener {
     }
 
     private void resetImage() {
-        BufferedImage newImg = new BufferedImage(this.imgWidth, this.imgHeight, BufferedImage.TYPE_INT_RGB);
+        BufferedImage newImg = new BufferedImage(this.canvas.getWidth(), this.canvas.getHeight(),
+                BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = newImg.createGraphics();
         for (int x = 0; x < newImg.getWidth(); x += this.imgTransparent.getWidth()) {
             for (int y = 0; y < newImg.getHeight(); y += this.imgTransparent.getHeight()) {
                 graphics.drawImage(this.imgTransparent, x, y, null);
             }
         }
+        System.out.println("reset");
         graphics.drawImage(this.image, 0, 0, null);
         this.image = newImg;
     }
@@ -510,31 +503,46 @@ public class Main implements MouseListener, KeyListener {
         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g.setRenderingHints(rh);
 
-        if (this.image == null || this.image.getWidth() != this.imgWidth || this.image.getHeight() != this.imgHeight) {
+        if (this.image == null || this.image.getWidth() != this.canvas.getWidth()
+                || this.image.getHeight() != this.canvas.getHeight()) {
             this.resetImage();
-            updateExportQualityOptions();
+            // updateExportQualityOptions();
         }
 
-        g.setColor(Color.WHITE);
+        System.out.println("wi " + this.image.getWidth() + " hi " + this.image.getHeight());
+        System.out.println("wc " + this.canvas.getWidth() + " hc " + this.canvas.getHeight());
+        System.out.println("wp " + this.mandelbrot.getPictureWidth() + " hp " + this.mandelbrot.getPictureHeight());
+
+        if (this.image.getWidth() != this.mandelbrot.getPictureWidth()
+                || this.image.getHeight() != this.mandelbrot.getPictureHeight()) {
+            System.out.println("copy because resize");
+            this.mandelbrot.abort();
+            this.mandelbrot = this.mandelbrot.getCopy();
+        }
+
+        // g.setColor(Color.WHITE);
         g.drawImage(image, 0, 0, null);
         if (this.shouldDrawCursor)
             drawCursor(g);
 
+        System.out.println("isbuilt: " +this.mandelbrot.isBuilt() + " hasBeenAborted: " + this.mandelbrot.hasBeenAborted());
+
         if (this.mandelbrot.isBuilt() && !this.mandelbrot.hasBeenAborted()) {
+            System.out.println("draw");
             this.mandelbrotDisplayed = this.mandelbrot;
-            image.setRGB(0, 0, imgWidth, imgHeight, this.mandelbrot.getImage(), 0, imgWidth);
+            image.setRGB(0, 0, this.mandelbrotDisplayed.getPictureWidth(), this.mandelbrotDisplayed.getPictureHeight(),
+                    this.mandelbrotDisplayed.getPictureData(), 0, this.mandelbrotDisplayed.getPictureWidth());
             g.drawImage(image, 0, 0, null);
             drawCursor(g);
             //
             updateInfoAboutC();
         } else if (!this.mandelbrot.isBuilding()) {
-            this.mandelbrot.build(this.imgWidth, this.imgHeight, (double percentage) -> {
+            this.mandelbrot.build(this.image.getWidth(), this.image.getHeight(), (double percentage) -> {
                 this.progressBar.setValue((int) percentage);
             }, () -> {
-                if (this.mandelbrot.getImage() == null)
+                if (this.mandelbrot.getPictureData() == null)
                     return;
                 this.canvas.repaint();
-
             });
         }
 
@@ -542,9 +550,9 @@ public class Main implements MouseListener, KeyListener {
 
     private void updateExportQualityOptions() {
         this.cmbExportQuality.removeAllItems();
-        String lowQuality = this.imgWidth + " x " + this.imgHeight;
-        String averageQuality = (this.imgWidth * 2) + " x " + (this.imgHeight * 2) + " (x2)";
-        String highQuality = (this.imgWidth * 4) + " x " + (this.imgHeight * 4) + " (x4)";
+        String lowQuality = this.mandelbrot.getWidth() + " x " + this.mandelbrot.getHeight();
+        String averageQuality = (this.mandelbrot.getWidth() * 2) + " x " + (this.mandelbrot.getHeight() * 2) + " (x2)";
+        String highQuality = (this.mandelbrot.getWidth() * 4) + " x " + (this.mandelbrot.getHeight() * 4) + " (x4)";
         this.cmbExportQuality.addItem(lowQuality);
         this.cmbExportQuality.addItem(averageQuality);
         this.cmbExportQuality.addItem(highQuality);
@@ -552,10 +560,10 @@ public class Main implements MouseListener, KeyListener {
 
     private void drawCursor(Graphics2D g) {
         // Map the complex number c to pixel coordinates
-        int curPixX = (int) (((this.cursorRe - mandelbrotDisplayed.getMinRe()) * mandelbrotDisplayed.getImageWidth())
+        int curPixX = (int) (((this.cursorRe - mandelbrotDisplayed.getMinRe()) * mandelbrotDisplayed.getWidth())
                 / Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe()));
-        int curPixY = (int) (mandelbrotDisplayed.getImageHeight()
-                - (((-this.cursorIm + mandelbrotDisplayed.getMinIm()) * mandelbrotDisplayed.getImageHeight()
+        int curPixY = (int) (mandelbrotDisplayed.getHeight()
+                - (((-this.cursorIm + mandelbrotDisplayed.getMinIm()) * mandelbrotDisplayed.getHeight()
                         / -Math.abs(mandelbrotDisplayed.getMaxIm() - mandelbrotDisplayed.getMinIm()))));
 
         // horizontal
@@ -583,49 +591,50 @@ public class Main implements MouseListener, KeyListener {
 
         if (this.chkFixAspectRatio.isSelected()) {
 
-            double rangeRe = Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe());
-            double rangeIm = Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm());
-            double aspectRatio = rangeRe / rangeIm;
-
-            this.imgWidth = (int) Math.ceil(this.canvas.getHeight() * aspectRatio);
-            this.imgHeight = (int) this.canvas.getHeight();
-
-            if (this.imgWidth > this.canvas.getWidth()) {
-                this.imgWidth = this.canvas.getWidth();
-                this.imgHeight = (int) Math.ceil(this.canvas.getWidth() * (1.0d / aspectRatio));
-            }
-
-            this.setMandelbrotContext(new Mandelbrot(mandelbrot.getMinRe(), mandelbrot.getMinIm(),
-                    mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getColorInside(),
-                    mandelbrot.getColorGradient()));
+            /*
+             * double rangeRe = Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe());
+             * double rangeIm = Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm());
+             * double aspectRatio = rangeRe / rangeIm;
+             * 
+             * this.imgWidth = (int) Math.ceil(this.canvas.getHeight() * aspectRatio);
+             * this.imgHeight = (int) this.canvas.getHeight();
+             * 
+             * if (this.imgWidth > this.canvas.getWidth()) { this.imgWidth =
+             * this.canvas.getWidth(); this.imgHeight = (int)
+             * Math.ceil(this.canvas.getWidth() * (1.0d / aspectRatio)); }
+             * 
+             * this.setMandelbrotContext(new Mandelbrot(mandelbrot.getMinRe(),
+             * mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(),
+             * mandelbrot.getNMax(), mandelbrot.getColorInside(),
+             * mandelbrot.getColorGradient()));
+             */
 
             // resetImage();
 
         } else {
 
-            double widthFactor = canvas.getWidth() / (double) this.imgWidth;
-            double heightFactor = canvas.getHeight() / (double) this.imgHeight;
+            /*
+             * double widthFactor = canvas.getWidth() / (double) this.mandelbrot.getWidth();
+             * double heightFactor = canvas.getHeight() / (double)
+             * this.mandelbrot.getHeight();
+             * 
+             * double maxReNew = mandelbrot.getMinRe() + Math.abs(mandelbrot.getMaxRe() -
+             * mandelbrot.getMinRe()) * widthFactor; double minImNew = mandelbrot.getMaxIm()
+             * - Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm()) * heightFactor;
+             * 
+             * this.setMandelbrotContext(new Mandelbrot(mandelbrot.getMinRe(), minImNew,
+             * maxReNew, mandelbrot.getMaxIm(), mandelbrot.getNMax(),
+             * mandelbrot.getColorInside(), mandelbrot.getColorGradient()));
+             */
 
-            this.imgWidth = (int) this.canvas.getWidth();
-            this.imgHeight = (int) this.canvas.getHeight();
-
-            double maxReNew = mandelbrot.getMinRe()
-                    + Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe()) * widthFactor;
-            double minImNew = mandelbrot.getMaxIm()
-                    - Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm()) * heightFactor;
-
-            this.setMandelbrotContext(new Mandelbrot(mandelbrot.getMinRe(), minImNew, maxReNew, mandelbrot.getMaxIm(),
-                    mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getColorGradient()));
-
-            // this.mandelbrotDisplayed = this.mandelbrot;
         }
 
-        this.canvas.repaint();
+        // this.canvas.repaint();
     }
 
     private void setMandelbrotContext(Mandelbrot m) {
-        if (this.mandelbrot.equals(m) && !this.mandelbrot.hasBeenAborted())
-            return;
+        //if (this.mandelbrot.equals(m) && !this.mandelbrot.hasBeenAborted())
+        //    return;s
         this.mandelbrot = m;
     }
 
@@ -692,8 +701,8 @@ public class Main implements MouseListener, KeyListener {
 
     private void onResetView() {
         this.mandelbrot.abort();
-        int width = this.imgWidth;
-        int height = this.imgHeight;
+        int width = this.canvas.getWidth();
+        int height = this.canvas.getHeight();
         double rangeIm = 3;
         double rangeRe = ((double) width / (double) height) * rangeIm;
         this.setMandelbrotContext(new Mandelbrot(-rangeRe / 2, -rangeIm / 2, rangeRe / 2, rangeIm / 2,
@@ -703,17 +712,14 @@ public class Main implements MouseListener, KeyListener {
     }
 
     private void updateInfoAboutC() {
-
-        Mandelbrot mand = new Mandelbrot(this.cursorRe, this.cursorIm, this.cursorRe, this.cursorIm,
-                this.mandelbrot.getNMax(), 0x000000, new int[] { 0xFFFFFF });
-        mand.build(1, 1, () -> {
-            String txt = "";
-            int[] data = mand.getData();
-            int iterations = data[0];
-            // txt += ((iterations == mand.getNMax() + 1) ? " ∈ " : " ∉ ") + "𝕄";
-            txt += "(" + (iterations) + "/" + mand.getNMax() + ")";
-            this.lblInfoAboutC.setText(txt);
-        });
+        /*
+         * Mandelbrot mand = new Mandelbrot(this.cursorRe, this.cursorIm, this.cursorRe,
+         * this.cursorIm, this.mandelbrot.getNMax(), 0x000000, new int[] { 0xFFFFFF });
+         * mand.build(1, 1, () -> { String txt = ""; int[] data = mand.getData(); int
+         * iterations = data[0]; // txt += ((iterations == mand.getNMax() + 1) ? " ∈ " :
+         * " ∉ ") + "𝕄"; txt += "(" + (iterations) + "/" + mand.getNMax() + ")";
+         * this.lblInfoAboutC.setText(txt); });
+         */
 
     }
 
@@ -752,18 +758,15 @@ public class Main implements MouseListener, KeyListener {
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (e.getButton() == MouseEvent.BUTTON1) {
-            this.frame.requestFocus();
-            if (e.getX() >= this.imgWidth || e.getY() >= this.imgHeight)
-                return;
-            double zOriginRe = mandelbrotDisplayed.getMinRe();
-            double zOriginIm = mandelbrotDisplayed.getMaxIm();
-            double s = Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe())
-                    / (double) mandelbrotDisplayed.getImageWidth();
-            double cRe = zOriginRe + s * e.getX();
-            double cIm = zOriginIm - s * e.getY();
-            this.putCursor(cRe, cIm);
-        }
+        /*
+         * if (e.getButton() == MouseEvent.BUTTON1) { this.frame.requestFocus(); if
+         * (e.getX() >= this.imgWidth || e.getY() >= this.imgHeight) return; double
+         * zOriginRe = mandelbrotDisplayed.getMinRe(); double zOriginIm =
+         * mandelbrotDisplayed.getMaxIm(); double s =
+         * Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe()) /
+         * (double) mandelbrotDisplayed.getWidth(); double cRe = zOriginRe + s *
+         * e.getX(); double cIm = zOriginIm - s * e.getY(); this.putCursor(cRe, cIm); }
+         */
     }
 
     @Override
