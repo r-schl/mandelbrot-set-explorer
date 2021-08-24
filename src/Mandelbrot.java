@@ -1,4 +1,3 @@
-
 import java.awt.Desktop;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -6,28 +5,29 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.awt.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.util.concurrent.ExecutionException;
-import org.yaml.snakeyaml.scanner.*;
-import org.yaml.snakeyaml.error.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.error.YAMLException;
 
 public class Mandelbrot {
     private static final String OUT_OF_MEMORY_ERR = "\n>> An OutOfMemoryError occured. Please reduce the image size and try again. <<";
-    private static final String ASPECT_RATIO_ERR = ">> Aspect ratios of the image and the section of the complex plane must be the same. <<";
+    private static final int PROGRESS_BAR_WIDTH = 30;
+    private static final double DIFF_EQUAL = 1E-7;
 
-    public final int NUMTHREADS = Runtime.getRuntime().availableProcessors();
+    private final int NUMTHREADS = Runtime.getRuntime().availableProcessors();
     private final int ESCAPE_RADIUS = 2;
+    private final int BACKGROUND = 0xFFFFFF;
 
     /**
      * Configuration
@@ -37,9 +37,8 @@ public class Mandelbrot {
     private double maxRe; // Right side of the area of the complex plane
     private double maxIm; // Top side of the area of the complex plane
     private int nMax; // Maximum number of iterations
-    private int colorInside; // Color for points inside the mandelbrot set
-    private int[] colorGradient; // Color gradient for points outside the set (first color diverges after 1
-    // iteration; last color diverges after nMax-1 iterations)
+    private int innerColor; // Color for points inside the mandelbrot set
+    private int[] colorGradient; // A color gradient for all points outside of the mandelbrot set
 
     /**
      * Data for the calculation
@@ -48,86 +47,133 @@ public class Mandelbrot {
     private int rowsCompleted = 0;
     private double percentageCompleted = 0;
     private int finishedThreads = 0;
-    private SwingWorker<int[], Integer>[] workers;
-    private int[] palette;
+    private long startTime;
+    private SwingWorker<int[], Integer>[] workerThreads;
+    private int[] colorPallete;
 
-    private int width;
-    private int height;
+    private int imageWidth; // Width of the image
+    private int imageHeight; // Height of the image
 
-    private int pictureWidth;
-    private int pictureHeight;
+    private int areaWidth; // Width of the area of the image where the mandelbrot set is displayed
+    private int areaHeight; // Height of the area of the image where the mandelbrot set is displayed
 
     private boolean isBuilt = false;
     private boolean isBuilding = false;
     private boolean hasBeenAborted = false;
 
-    public static Mandelbrot fromYamlFile(String path) throws FileNotFoundException, YAMLException {
-        Yaml yaml = new Yaml();
-        Map<String, Object> yamlData = null;
-        InputStream inputStream = new FileInputStream(path);
-        yamlData = (Map) yaml.load(inputStream);
-        return new Mandelbrot(yamlData);
+    private static boolean isVerbose = false;
+    private static boolean shouldOpen = false;
+
+    public Mandelbrot(Mandelbrot other) {
+        this(other.imageWidth, other.imageHeight, other.minRe, other.minIm, other.maxRe, other.maxIm, other.nMax,
+                other.innerColor, other.colorGradient);
+    }
+
+    public Mandelbrot(Map<String, Object> config, int imageWidth, int imageHeight)
+            throws CorruptYAMLDataException, IllegalArgumentException {
+        try {
+            this.imageWidth = imageWidth;
+            this.imageHeight = imageHeight;
+            this.minRe = (Double) config.get("minRe");
+            this.minIm = (Double) config.get("minIm");
+            this.maxRe = (Double) config.get("maxRe");
+            this.maxIm = (Double) config.get("maxIm");
+            double lenRe = maxRe - minRe;
+            double lenIm = maxIm - minIm;
+            if (lenRe < 0 || Math.abs(lenRe) < DIFF_EQUAL || lenIm < 0 || Math.abs(lenIm) < DIFF_EQUAL)
+                throw new IllegalArgumentException("The area of the complex plane is invalid or too small");
+            this.calculateAreaDimensions(this.imageWidth, this.imageHeight);
+            this.nMax = (Integer) config.get("nMax");
+            this.innerColor = (Integer) config.get("innerColor");
+            this.colorGradient = ((ArrayList<Integer>) config.get("colorGradient")).stream().mapToInt(i -> i).toArray();
+            if (this.colorGradient.length == 0)
+                throw new IllegalArgumentException("There must be at least one color in the color gradient");
+            this.colorPallete = createColorPalette(this.innerColor, this.colorGradient, this.nMax);
+        } catch (Exception e) {
+            if (e instanceof IllegalArgumentException) {
+                throw e;
+            } else
+                throw new CorruptYAMLDataException("YAML Data was corrupt or not complete");
+        }
+
     }
 
     /**
      * 
-     * @param imgWidth  X-dimension of the image in pixels
-     * @param imgHeight Y-dimension of the image in pixels
-     * @param minRe     Left side of the area of the complex plane
-     * @param minIm     Bottom side of the area of the complex plane
-     * @param maxRe     Right side of the area of the complex plane
-     * @param maxIm     Top side of the area of the complex plane
-     * @param nMax      Maximum number of iterations
-     * @param color     Color for points inside the mandelbrot set
-     * @param gradient  Color gradient for points outside the set (first color
-     *                  diverges after 1 iteration; last color diverges after nMax-1
-     *                  iterations)
+     * @param width    X-dimension of the image in pixels
+     * @param height   Y-dimension of the image in pixels
+     * @param minRe    Left side of the area of the complex plane
+     * @param minIm    Bottom side of the area of the complex plane
+     * @param maxRe    Right side of the area of the complex plane
+     * @param maxIm    Top side of the area of the complex plane
+     * @param nMax     Maximum number of iterations
+     * @param color    Color for points inside the mandelbrot set
+     * @param gradient Color gradient for points outside the set (first color
+     *                 diverges after 1 iteration; last color diverges after nMax-1
+     *                 iterations)
      */
-    public Mandelbrot(double minRe, double minIm, double maxRe, double maxIm, int nMax, int colorInside,
-            int[] gradient) {
-        if (nMax < 0) {
-            System.err.println(">> nMax must be greater than or equal to 0 <<");
-            System.exit(-1);
-        }
-        /*
-         * this.imgWidth = imgWidth; this.imgHeight = imgHeight;
-         */
+    public Mandelbrot(int imageWidth, int imageHeight, double minRe, double minIm, double maxRe, double maxIm, int nMax,
+            int innerColor, int[] colorGradient) throws IllegalArgumentException {
+        this.imageWidth = imageWidth;
+        this.imageHeight = imageHeight;
         this.minRe = minRe;
         this.minIm = minIm;
         this.maxRe = maxRe;
         this.maxIm = maxIm;
+        double lenRe = maxRe - minRe;
+        double lenIm = maxIm - minIm;
+        if (lenRe < 0 || Math.abs(lenRe) < DIFF_EQUAL || lenIm < 0 || Math.abs(lenIm) < DIFF_EQUAL)
+            throw new IllegalArgumentException("The area of the complex plane is too small");
+        this.calculateAreaDimensions(this.imageWidth, this.imageHeight);
         this.nMax = nMax;
-        this.colorInside = colorInside;
-        this.colorGradient = gradient;
-        this.palette = createColorPalette(this.colorInside, this.colorGradient, this.nMax);
+        this.innerColor = innerColor;
+        this.colorGradient = colorGradient;
+        if (this.colorGradient.length == 0)
+            throw new IllegalArgumentException("There must be at least one color in the color gradient");
+        this.colorPallete = createColorPalette(this.innerColor, this.colorGradient, this.nMax);
     }
 
-    public Mandelbrot(Mandelbrot other) {
-        this(other.minRe, other.minIm, other.maxRe, other.maxIm, other.nMax, other.colorInside, other.colorGradient);
+    private void calculateAreaDimensions(int imageWidth, int imageHeight) {
+        double rangeRe = Math.abs(maxRe - minRe);
+        double rangeIm = Math.abs(maxIm - minIm);
+
+        this.areaWidth = (int) Math.ceil((double) imageHeight * (rangeRe / rangeIm));
+        this.areaHeight = (int) imageHeight;
+
+        if (this.areaWidth > imageWidth) {
+            this.areaWidth = imageWidth;
+            this.areaHeight = (int) Math.ceil((double) imageWidth * (rangeIm / rangeRe));
+        }
     }
 
-    public Mandelbrot(Map<String, Object> config) {
-        this((Double) config.get("minRe"), (Double) config.get("minIm"), (Double) config.get("maxRe"),
-                (Double) config.get("maxIm"), (Integer) config.get("nMax"), (Integer) config.get("colorInside"),
-                ((ArrayList<Integer>) config.get("colorGradient")).stream().mapToInt(i -> i).toArray());
+    // GETTERS
+
+    public boolean isBuilt() {
+        return this.isBuilt;
     }
 
-    // Get Methods
-
-    public int getPictureWidth() {
-        return this.pictureWidth;
+    public boolean hasBeenAborted() {
+        return this.hasBeenAborted;
     }
 
-    public int getPictureHeight() {
-        return this.pictureHeight;
+    public boolean isBuilding() {
+        return this.isBuilding;
     }
 
-    public int getWidth() {
-        return this.width;
+    public int getImageWidth() {
+        return this.imageWidth;
     }
 
-    public int getHeight() {
-        return this.height;
+    public int getImageHeight() {
+        return this.imageHeight;
+    }
+
+    public int getAreaWidth() {
+        return this.areaWidth;
+    }
+
+    public int getAreaHeight() {
+        return this.areaHeight;
     }
 
     public double getMinRe() {
@@ -150,8 +196,8 @@ public class Mandelbrot {
         return this.nMax;
     }
 
-    public int getColorInside() {
-        return this.colorInside;
+    public int getInnerColor() {
+        return this.innerColor;
     }
 
     public int[] getColorGradient() {
@@ -164,52 +210,92 @@ public class Mandelbrot {
         return this.data;
     }
 
-    public int[] getRGBData() {
-        if (!isBuilt)
-            return null;
-        int[] img = new int[this.width * this.height];
-        for (int i = 0; i < this.data.length; ++i) {
-            img[i] = this.palette[this.data[i]];
-        }
+    public BufferedImage getAreaImage() {
+        BufferedImage img = new BufferedImage(this.areaWidth, this.areaHeight, BufferedImage.TYPE_INT_RGB);
+        int[] rgbArray = new int[this.areaWidth * this.areaHeight];
+        for (int i = 0; i < this.data.length; i++)
+            rgbArray[i] = this.colorPallete[this.data[i]];
+        img.setRGB(0, 0, this.areaWidth, this.areaHeight, rgbArray, 0, this.areaWidth);
         return img;
     }
 
-    public int[] getPictureData() {
+    public BufferedImage getImage() {
+        BufferedImage img = new BufferedImage(this.imageWidth, this.imageHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = (Graphics2D) img.createGraphics();
+        int startX = (int) Math.ceil((this.imageWidth - this.areaWidth) / 2.0D);
+        int startY = (int) Math.ceil((this.imageHeight - this.areaHeight) / 2.0D);
+        g.drawImage(this.getAreaImage(), null, startX, startY);
+        return img;
+    }
+
+    public int[] getImageData() {
         if (!isBuilt)
             return null;
-        int[] img = new int[this.pictureWidth * this.pictureHeight];
-        int offsetX = (this.pictureWidth - this.width) / 2;
-        int offsetY = (this.pictureHeight - this.height) / 2;
+
+        int[] img = new int[this.imageWidth * this.imageHeight];
+        Arrays.fill(img, BACKGROUND);
+
+        int startX = (int) Math.ceil((this.imageWidth - this.areaWidth) / 2.0D);
+        int endX = this.imageWidth - (int) Math.floor((this.imageWidth - this.areaWidth) / 2.0D);
+        int startY = (int) Math.ceil((this.imageHeight - this.areaHeight) / 2.0D);
+        int endY = this.imageHeight - (int) Math.floor((this.imageHeight - this.areaHeight) / 2.0D);
         int i = 0;
-        for (int y = offsetY; y < (this.pictureHeight - offsetY); y++) {
-            for (int x = offsetX; x < (this.pictureWidth - offsetX); x++) {
-                img[x * y] = this.palette[this.data[i]];
+        // Border
+
+        // int[] distances = new int[] { 1, 3, 6, 13, 18 };
+        // int[] colorShades = new int[] { 0x7d7d7d, 0xb8b8b8, 0xdedede, 0xf2f2f2,
+        // 0xfcfcfc };
+        /*
+         * int[] distances = new int[] { 1 }; int[] colorShades = new int[] { 0x7d7d7d
+         * };
+         * 
+         * for (int y = 0; y < this.imageHeight; y++) { int k = 1; for (int j = 0; j <
+         * distances.length; j++) { for (; k <= distances[j] && startX - distances[j] >
+         * 0; k++) img[y * this.imageWidth + startX - k] = colorShades[j]; } k = 1; for
+         * (int j = 0; j < distances.length; j++) { for (; k <= distances[j] && endX +
+         * distances[j] < this.imageWidth; k++) img[y * this.imageWidth + endX + k] =
+         * colorShades[j]; } }
+         * 
+         * for (int x = 0; x < this.imageWidth; x++) { int k = 1; for (int j = 0; j <
+         * distances.length; j++) { for (; k <= distances[j] && startY - distances[j] >
+         * 0; k++) img[(startY - k) * this.imageWidth + x] = colorShades[j]; } k = 1;
+         * for (int j = 0; j < distances.length; j++) { for (; k <= distances[j] && endY
+         * + distances[j] < this.imageHeight; k++) img[(endY + k) * this.imageWidth + x]
+         * = colorShades[j]; } }
+         */
+
+        for (int y = startY; y < endY; y++) {
+            for (int x = startX; x < endX; x++) {
+                img[this.imageWidth * y + x] = this.colorPallete[this.data[i]];
                 i++;
             }
         }
         return img;
     }
 
-    public boolean isBuilt() {
-        return this.isBuilt;
-    }
+    public Mandelbrot extendAreaToImageSize() {
 
-    public boolean hasBeenAborted() {
-        return this.hasBeenAborted;
-    }
+        double widthFactor = (double) imageWidth / (double) areaWidth;
+        double heightFactor = (double) imageHeight / (double) areaHeight;
 
-    public boolean isBuilding() {
-        return this.isBuilding;
-    }
+        double lengthRe = (maxRe - minRe);
+        double lengthIm = (maxIm - minIm);
+        if (Math.abs(widthFactor - 1.0D) < DIFF_EQUAL)
+            lengthIm = lengthRe * ((double) imageHeight / imageWidth);
 
-    /**
-     * This method returns a new Mandelbrot object with the same configurations as
-     * this one.
-     * 
-     * @return a copy of this Mandelbrot object
-     */
-    public Mandelbrot getCopy() {
-        return new Mandelbrot(this);
+        if (Math.abs(heightFactor - 1.0D) < DIFF_EQUAL)
+            lengthRe = lengthIm * ((double) imageWidth / imageHeight);
+
+        double diffRe = (lengthRe - (maxRe - minRe)) / 2.0D;
+        double diffIm = (lengthIm - (maxIm - minIm)) / 2.0D;
+
+        double minReNew = minRe - diffRe;
+        double minImNew = minIm - diffIm;
+        double maxReNew = minReNew + lengthRe;
+        double maxImNew = minImNew + lengthIm;
+
+        return new Mandelbrot(imageWidth, imageHeight, minReNew, minImNew, maxReNew, maxImNew, nMax, innerColor,
+                colorGradient);
     }
 
     /**
@@ -221,14 +307,32 @@ public class Mandelbrot {
      * @param factor zoom factor
      * @return
      */
-    public Mandelbrot getZoom(double re, double im, double factor) {
+    public Mandelbrot zoom(double re, double im, double factor) {
         double rangeRe = Math.abs(this.maxRe - this.minRe);
         double rangeIm = Math.abs(this.maxIm - this.minIm);
-        double newMinRe = -rangeRe / (2.0D * factor) + re;
-        double newMinIm = -rangeIm / (2.0D * factor) + im;
-        double newMaxRe = rangeRe / (2.0D * factor) + re;
-        double newMaxIm = rangeIm / (2.0D * factor) + im;
-        return new Mandelbrot(newMinRe, newMinIm, newMaxRe, newMaxIm, this.nMax, this.colorInside, this.colorGradient);
+        double newminRe = -rangeRe / (2.0D * factor) + re;
+        double newminIm = -rangeIm / (2.0D * factor) + im;
+        double newmaxRe = rangeRe / (2.0D * factor) + re;
+        double newmaxIm = rangeIm / (2.0D * factor) + im;
+        return new Mandelbrot(this.imageWidth, this.imageHeight, newminRe, newminIm, newmaxRe, newmaxIm, this.nMax,
+                this.innerColor, this.colorGradient);
+    }
+
+    public Mandelbrot resizeImage(int imageWidth, int imageHeight) {
+        return new Mandelbrot(imageWidth, imageHeight, this.minRe, this.minIm, this.maxRe, this.maxIm, this.nMax,
+                this.innerColor, this.colorGradient);
+    }
+
+    public Mandelbrot lolToSize(int imageWidth, int imageHeight) {
+
+        double widthFactor = (double) imageWidth / (double) this.areaWidth;
+        double heightFactor = (double) imageHeight / (double) this.areaHeight;
+
+        double maxReNew = this.minRe + Math.abs(this.maxRe - this.minRe) * widthFactor;
+        double minImNew = this.maxIm - Math.abs(this.maxIm - this.minIm) * heightFactor;
+
+        return new Mandelbrot(imageWidth, imageHeight, this.minRe, minImNew, maxReNew, this.maxIm, this.nMax,
+                this.innerColor, this.colorGradient);
     }
 
     /**
@@ -240,9 +344,9 @@ public class Mandelbrot {
         if (!(o instanceof Mandelbrot))
             return false;
         Mandelbrot mandelbrot = (Mandelbrot) o;
-        if (this.pictureWidth != mandelbrot.pictureWidth)
+        if (this.imageWidth != mandelbrot.imageWidth)
             return false;
-        if (this.pictureHeight != mandelbrot.pictureHeight)
+        if (this.imageHeight != mandelbrot.imageHeight)
             return false;
         if (this.minRe != mandelbrot.minRe)
             return false;
@@ -254,7 +358,7 @@ public class Mandelbrot {
             return false;
         if (this.nMax != mandelbrot.nMax)
             return false;
-        if (this.colorInside != mandelbrot.colorInside)
+        if (this.innerColor != mandelbrot.innerColor)
             return false;
         if (!Arrays.equals(this.colorGradient, mandelbrot.colorGradient))
             return false;
@@ -270,11 +374,9 @@ public class Mandelbrot {
      * @param nMax     maximum number of iterations
      * @return
      */
-    private int[] createColorPalette(int color, int[] gradient, int nMax) {
-        if (gradient.length == 0) {
-            System.err.println(">> User must specify at least one color of the color gradient. <<");
-            System.exit(-1);
-        }
+    private int[] createColorPalette(int color, int[] gradient, int nMax) throws IllegalArgumentException {
+        if (gradient.length == 0)
+            new IllegalArgumentException("There must be at least one color in the color gradient");
 
         if (nMax == 0)
             return new int[] { color };
@@ -320,12 +422,11 @@ public class Mandelbrot {
      * 
      * @param path export path
      */
-    public void saveAsPicture(String path) {
+    public void saveAsImage(String path) {
         try {
-            int[] img = this.getPictureData();
-            BufferedImage image = new BufferedImage(this.pictureWidth, this.pictureHeight, 1);
-            image.setRGB(0, 0, this.pictureWidth, this.pictureHeight, img, 0, this.pictureWidth);
-
+            int[] img = this.getImageData();
+            BufferedImage image = new BufferedImage(this.imageWidth, this.imageHeight, 1);
+            image.setRGB(0, 0, this.imageWidth, this.imageHeight, img, 0, this.imageWidth);
             try {
                 ImageIO.write(image, "jpg", new File(path));
             } catch (IOException var5) {
@@ -337,82 +438,33 @@ public class Mandelbrot {
         }
     }
 
-    public void exportYaml(String path) {
-        try {
-            PrintWriter writer = new PrintWriter(path, "UTF-8");
-            writer.println("# Ausschnitt der komplexen Zahlenebene, ");
-            writer.println("# beschrieben durch zwei komplexe Zahlen 'min' and 'max'");
-            writer.println("minRe: " + this.minRe);
-            writer.println("minIm: " + this.minIm);
-            writer.println("maxRe: " + this.maxRe);
-            writer.println("maxIm: " + this.maxIm);
-            writer.println("# Maximale Anzahl an Iterationen (Iterationstiefe)");
-            writer.println("nMax: " + this.nMax);
-            writer.println("# Farbwert (hexadezimal) für das Innere der Menge");
-            writer.println("colorInside: " + this.colorInside);
-            writer.println("# Farbverlauf (hexadezimal) für alle Pixel deren c nicht zur Menge gehören");
-            writer.println("colorGradient: " + Arrays.toString(this.colorGradient));
-
-            writer.close();
-        } catch (FileNotFoundException | UnsupportedEncodingException ignored) {
-        }
-    }
-
-    public void build(int w, int h, final Runnable onFinish) {
-        this.build(w, h, (percentage) -> {
+    public void build(final Runnable onFinish) {
+        this.build((percentage) -> {
             // empty
         }, onFinish);
     }
 
-    public void build(int w, int h, final DoubleRunnable onProgress, final Runnable onFinish) {
-        // Make sure that we are on the Swing UI Thread
+    public void build(final DoubleRunnable onProgress, final Runnable onFinish) {
+
+        // make sure we are on the Swing UI Thread
         if (!SwingUtilities.isEventDispatchThread()) {
-            SwingUtilities.invokeLater(() -> build(w, h, onProgress, onFinish));
+            SwingUtilities.invokeLater(() -> build(onProgress, onFinish));
             return;
         }
 
-        // If the mandelbrot set is already in the building process, return
         if (isBuilding) {
             return;
         }
 
-        // If the mandelbrot set is already built, there is no need to recalculate
         if (isBuilt) {
             onProgress.run(100);
             onFinish.run();
             return;
         }
 
-        /*
-         * double arImage = (double) this.imgWidth / (double) this.imgHeight; double
-         * arComplex = Math.abs(this.maxRe - this.minRe) / Math.abs(this.maxIm -
-         * this.minIm); if (arImage != arComplex) { // ignore this excpetion
-         * System.err.print(ASPECT_RATIO_ERR); System.exit(-1); }
-         */
-
-        this.pictureWidth = w;
-        this.pictureHeight = h;
-
-        System.out.println("wp (m) " + w + " hp (m) " + h);
-
-        double rangeRe = Math.abs(maxRe - minRe);
-        double rangeIm = Math.abs(maxIm - minIm);
-        double aspectRatio = rangeRe / rangeIm;
-
-        System.out.println(rangeRe + " " + rangeIm + " " + aspectRatio);
-
-        this.width = (int) Math.ceil((double) this.pictureHeight * aspectRatio);
-        this.height = (int) this.pictureHeight;
-
-        if (this.width > this.pictureWidth) {
-            this.width = this.pictureWidth;
-            this.height = (int) Math.ceil((double) this.pictureWidth * (1.0d / aspectRatio));
-        }
-
-        System.out.println("width " + this.width + " height " + this.height);
-
-        this.data = new int[this.width * this.height];
-        this.workers = new SwingWorker[this.NUMTHREADS];
+        this.startTime = System.currentTimeMillis();
+        this.data = new int[this.areaWidth * this.areaHeight];
+        this.workerThreads = new SwingWorker[this.NUMTHREADS];
         this.percentageCompleted = 0;
         this.rowsCompleted = 0;
 
@@ -421,7 +473,7 @@ public class Mandelbrot {
         for (int i = 0; i < this.NUMTHREADS; i++) {
             final int k = i;
 
-            this.workers[i] = new SwingWorker<int[], Integer>() {
+            this.workerThreads[i] = new SwingWorker<int[], Integer>() {
                 int xBegin;
                 int xEnd;
                 int xRange;
@@ -432,13 +484,13 @@ public class Mandelbrot {
                 protected int[] doInBackground() {
 
                     this.xBegin = 0;
-                    this.xEnd = width;
+                    this.xEnd = areaWidth;
                     this.xRange = this.xEnd - this.xBegin;
-                    this.yBegin = k * (height / NUMTHREADS);
-                    this.yEnd = k * (height / NUMTHREADS) + height / NUMTHREADS;
+                    this.yBegin = k * (areaHeight / NUMTHREADS);
+                    this.yEnd = k * (areaHeight / NUMTHREADS) + areaHeight / NUMTHREADS;
 
                     if (k == NUMTHREADS - 1)
-                        this.yEnd = height;
+                        this.yEnd = areaHeight;
 
                     this.yRange = this.yEnd - this.yBegin;
 
@@ -451,7 +503,7 @@ public class Mandelbrot {
                             double py = (double) (this.yBegin + row);
                             double zOriginRe = minRe;
                             double zOriginIm = maxIm;
-                            double s = Math.abs(maxRe - minRe) / (double) width;
+                            double s = Math.abs(maxRe - minRe) / (double) areaWidth;
                             double cRe = zOriginRe + s * px;
                             double cIm = zOriginIm - s * py;
                             part[row * this.xRange + col] = iterate(cRe, cIm);
@@ -466,7 +518,7 @@ public class Mandelbrot {
                 protected void process(List<Integer> rows) {
                     if (isBuilding) {
                         rowsCompleted = rowsCompleted + rows.size();
-                        percentageCompleted = rowsCompleted * 100.0D / (double) height;
+                        percentageCompleted = rowsCompleted * 100.0D / (double) areaHeight;
                         onProgress.run(percentageCompleted);
                     }
                 }
@@ -474,8 +526,8 @@ public class Mandelbrot {
                 public void done() {
                     try {
                         int[] part = (int[]) this.get();
-                        int normalPartLength = width
-                                * ((k * (height / NUMTHREADS) + height / NUMTHREADS) - (k * (height / NUMTHREADS)));
+                        int normalPartLength = areaWidth * ((k * (areaHeight / NUMTHREADS) + areaHeight / NUMTHREADS)
+                                - (k * (areaHeight / NUMTHREADS)));
                         System.arraycopy(part, 0, data, normalPartLength * k, part.length);
                     } catch (ExecutionException | InterruptedException var3) {
                         String message = var3.getCause().getMessage();
@@ -486,7 +538,7 @@ public class Mandelbrot {
                     }
 
                     ++finishedThreads;
-                    if (finishedThreads == workers.length) {
+                    if (finishedThreads == workerThreads.length) {
                         finishedThreads = 0;
                         isBuilt = true;
                         isBuilding = false;
@@ -496,23 +548,33 @@ public class Mandelbrot {
                 }
 
             };
-            this.workers[i].execute();
+            this.workerThreads[i].execute();
         }
     }
 
     public void abort() {
         this.isBuilding = false;
-        if (this.workers == null)
+        if (this.workerThreads == null)
             return;
         for (int i = 0; i < this.NUMTHREADS; i++) {
-            if (this.workers[i] != null && !this.workers[i].isDone()) {
+            if (this.workerThreads[i] != null && !this.workerThreads[i].isDone()) {
                 this.hasBeenAborted = true;
                 try {
-                    this.workers[i].cancel(true);
+                    this.workerThreads[i].cancel(true);
                 } catch (Exception var9) {
                 }
             }
         }
+    }
+
+    private long countTotalIterations() {
+        long count = 0L;
+
+        for (int i = 0; i < this.data.length; ++i) {
+            count += (long) this.data[i];
+        }
+
+        return count;
     }
 
     private int iterate(double cRe, double cIm) {
@@ -528,6 +590,137 @@ public class Mandelbrot {
             }
         }
         return this.nMax;
+    }
+
+    public void exportToYAML(String path) throws FileNotFoundException, UnsupportedEncodingException {
+        PrintWriter writer = new PrintWriter(path, "UTF-8");
+        writer.println("# Area of the complex plane given by two numbers 'min' and 'max'");
+        writer.println("minRe: " + this.minRe);
+        writer.println("minIm: " + this.minIm);
+        writer.println("maxRe: " + this.maxRe);
+        writer.println("maxIm: " + this.maxIm);
+        writer.println("# Max amount of iterations (iteration depth)");
+        writer.println("nMax: " + this.nMax);
+        writer.println("# Color (hexadecimal representation) for points inside of the mandelbrot set");
+        writer.println("innerColor: " + this.innerColor);
+        writer.println("# Color gradient (hexadecimal representation) for points outside of the mandelbrot set");
+        writer.println("# > First color for n_max-1 iterations reached");
+        writer.println("# > Last color for 0 iterations reached");
+        writer.println("# At least one color must be specified");
+        writer.println("colorGradient: " + Arrays.toString(this.colorGradient));
+        writer.close();
+    }
+
+    public static void main(String[] args) {
+
+        int k = 0;
+        if (args[0].startsWith("-")) {
+            k++;
+            if (args[0].indexOf('o') != -1)
+                shouldOpen = true;
+            if (args[0].indexOf('v') != -1)
+                isVerbose = true;
+        }
+
+        String configFile = args[k];
+        int imageWidth = Integer.parseInt(args[k + 1]);
+        int imageHeight = Integer.parseInt(args[k + 2]);
+        String outputPath = args[k + 3];
+        try {
+
+            Mandelbrot mand = Mandelbrot.fromYAMLFile(configFile, imageWidth, imageHeight);
+
+            try {
+                mand.exportToYAML(configFile);
+            } catch (UnsupportedEncodingException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
+            mand.build((percentage) -> { // On progress update
+
+                String progressStr = "";
+                while (progressStr.length() < PROGRESS_BAR_WIDTH * (percentage / 100.0D))
+                    progressStr += "#";
+                while (progressStr.length() < PROGRESS_BAR_WIDTH)
+                    progressStr += " ";
+                String str = "|" + progressStr + "| " + (double) Math.round(percentage * 10.0D) / 10.0D + "%";
+                str += percentage != 100.0D ? "   [in progress] \r" : "   [done]  ";
+                System.out.print(str);
+
+            }, () -> { // On finish
+
+                // Print a full progress bar
+                String str = "";
+                for (int i = 0; i < PROGRESS_BAR_WIDTH; i++)
+                    str += "#";
+                System.out.print("|" + str + "| " + "100%   [done]  ");
+
+                if (isVerbose) {
+                    System.out.println("       ");
+                    System.out.println();
+                    System.out.println("> output file: " + outputPath);
+                    System.out.println("> image size: " + mand.imageWidth + "x" + mand.imageHeight);
+                    System.out.println("> size of the mandelbrot area: " + mand.areaWidth + "x" + mand.areaHeight);
+                    System.out.println("> configurations (" + configFile + "): ");
+                    System.out.println("   - min complex number: " + mand.minRe + (mand.minIm > 0.0D ? "+" : "")
+                            + mand.minIm + "i");
+                    System.out.println("   - max complex number: " + mand.maxRe + (mand.maxIm > 0.0D ? "+" : "")
+                            + mand.maxIm + "i");
+                    System.out.println("   - max iterations: " + mand.nMax);
+                    System.out.println("   - inner color: " + mand.innerColor);
+                    System.out.println("   - color gradient: " + Arrays.toString(mand.colorGradient));
+                    System.out.println("> build information: ");
+                    System.out.println("   - build time: "
+                            + (double) (System.currentTimeMillis() - mand.startTime) / 1000.0D + "s");
+                    long numIterationsTotal = mand.countTotalIterations();
+                    System.out.println("   - total number of iterations: " + numIterationsTotal);
+                    System.out.println("   - average number of iterations per pixel: "
+                            + (double) Math.round((double) numIterationsTotal / (double) mand.data.length * 100.0D)
+                                    / 100.0D);
+                } else {
+                    System.out.println("> output: " + outputPath);
+                }
+
+                mand.saveAsImage(outputPath);
+
+                if (shouldOpen) {
+                    try {
+                        Desktop.getDesktop().open(new File(outputPath));
+                    } catch (IOException err) {
+                    }
+                }
+                ///////////////////////
+            });
+        } catch (FileNotFoundException | YAMLException e) {
+            System.out
+                    .println("The configuration file '" + configFile + "' was not found or the YAML data was corrupt");
+            System.exit(-1);
+        }
+
+    }
+
+    public static Mandelbrot fromYAMLFile(String path, int imageWidth, int imageHeight)
+            throws FileNotFoundException, YAMLException, CorruptYAMLDataException {
+        Yaml yaml = new Yaml();
+        Map<String, Object> yamlData = null;
+        InputStream inputStream = new FileInputStream(path);
+        yamlData = (Map) yaml.load(inputStream);
+        return new Mandelbrot(yamlData, imageWidth, imageHeight);
+    }
+
+    class CorruptYAMLDataException extends RuntimeException {
+        public CorruptYAMLDataException(String message) {
+            super(message);
+        }
+
+        public CorruptYAMLDataException(Throwable cause) {
+            super(cause);
+        }
+
+        public CorruptYAMLDataException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 
     @FunctionalInterface

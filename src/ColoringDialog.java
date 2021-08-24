@@ -53,7 +53,7 @@ public class ColoringDialog extends JDialog {
                         });
                 });
 
-                this.pnlColorInside.setBackground(new Color(mandelbrot.getColorInside()));
+                this.pnlColorInside.setBackground(new Color(mandelbrot.getInnerColor()));
                 this.pnlColorInside.setPreferredSize(new Dimension(30, 30));
                 this.pnlColorInside.setMaximumSize(new Dimension(30, 30));
                 this.btnColorInside.add(this.pnlColorInside);

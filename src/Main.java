@@ -397,17 +397,17 @@ public class Main implements MouseListener, KeyListener {
         frame.setVisible(true);
 
         double ar = (double) canvas.getWidth() / canvas.getHeight();
-        this.mandelbrot = new Mandelbrot(-1.5 * ar, -1.5, 1.5 * ar, 1.5, 100, 0x000000,
-                new int[] { 0xff003c, 0xFFFFFF });
-        this.mandelbrotDisplayed = new Mandelbrot(-1.5 * ar, -1.5, 1.5 * ar, 1.5, 100, 0x000000,
-                new int[] { 0xff003c, 0xFFFFFF });
+        this.mandelbrot = new Mandelbrot(canvas.getWidth(), canvas.getHeight(), -1.5 * ar, -1.5, 1.5 * ar, 1.5, 100,
+                0x000000, new int[] { 0xff003c, 0xFFFFFF });
+        this.mandelbrotDisplayed = new Mandelbrot(canvas.getWidth(), canvas.getHeight(), -1.5 * ar, -1.5, 1.5 * ar, 1.5,
+                100, 0x000000, new int[] { 0xff003c, 0xFFFFFF });
 
         this.spnIterations.setValue(mandelbrot.getNMax());
         this.lblInfoAboutC.setText("c ∈ 𝕄 (" + this.mandelbrot.getNMax() + "/" + this.mandelbrot.getNMax() + ")");
         // this.frame.setTitle("Mandelbrot Fraktal-Generator - " + + " Prozessor(en)");
 
-        lblStatus.setText("   Robert Schlosshan | Mandelbrot Fraktal-Generator v1.0   (" + this.mandelbrot.NUMTHREADS
-                + " Prozessoren)");
+        lblStatus.setText("   Robert Schlosshan | Mandelbrot Fraktal-Generator v1.0   ("
+                + Runtime.getRuntime().availableProcessors() + " Prozessoren)");
 
         InputStream resourceBuff = this.getClass().getResourceAsStream("res/transparent.png");
         try {
@@ -432,13 +432,18 @@ public class Main implements MouseListener, KeyListener {
         int option = fileChooser.showDialog(frame, "Speichern");
         if (option == JFileChooser.APPROVE_OPTION) {
             File file = fileChooser.getSelectedFile();
-            this.mandelbrot.exportYaml(file.getAbsolutePath());
+            try {
+                this.mandelbrot.exportToYAML(file.getAbsolutePath());
+            } catch (FileNotFoundException | UnsupportedEncodingException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
         }
     }
 
     private void importFile(String path) {
         try {
-            this.mandelbrot = Mandelbrot.fromYamlFile(path);
+            this.mandelbrot = Mandelbrot.fromYAMLFile(path, this.canvas.getWidth(), this.canvas.getHeight());
             this.spnIterations.setValue(this.mandelbrot.getNMax());
             this.chkFixAspectRatio.setSelected(true);
         } catch (FileNotFoundException | YAMLException e) {
@@ -471,11 +476,11 @@ public class Main implements MouseListener, KeyListener {
             int factor = index == 0 ? 1 : index == 1 ? 2 : 4;
             int w = this.canvas.getWidth() * factor;
             int h = this.canvas.getHeight() * factor;
-            Mandelbrot m = new Mandelbrot(mandelbrot.getMinRe(), mandelbrot.getMinIm(), mandelbrot.getMaxRe(),
-                    mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getColorInside(),
+            Mandelbrot m = new Mandelbrot(w, h, mandelbrot.getMinRe(), mandelbrot.getMinIm(), mandelbrot.getMaxRe(),
+                    mandelbrot.getMaxIm(), mandelbrot.getNMax(), mandelbrot.getInnerColor(),
                     mandelbrot.getColorGradient());
             m.abort();
-            new ExportProgressDialog(m, w, h, file);
+            new ExportProgressDialog(m, file);
         }
     }
 
@@ -502,45 +507,39 @@ public class Main implements MouseListener, KeyListener {
         RenderingHints rh = new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g.setRenderingHints(rh);
-
-        if (this.image == null || this.image.getWidth() != this.canvas.getWidth()
-                || this.image.getHeight() != this.canvas.getHeight()) {
-            this.resetImage();
-            // updateExportQualityOptions();
-        }
-
-        System.out.println("wi " + this.image.getWidth() + " hi " + this.image.getHeight());
-        System.out.println("wc " + this.canvas.getWidth() + " hc " + this.canvas.getHeight());
-        System.out.println("wp " + this.mandelbrot.getPictureWidth() + " hp " + this.mandelbrot.getPictureHeight());
-
-        if (this.image.getWidth() != this.mandelbrot.getPictureWidth()
-                || this.image.getHeight() != this.mandelbrot.getPictureHeight()) {
-            System.out.println("copy because resize");
-            this.mandelbrot.abort();
-            this.mandelbrot = this.mandelbrot.getCopy();
-        }
+        /*
+         * if (this.image == null || this.image.getWidth() != this.canvas.getWidth() ||
+         * this.image.getHeight() != this.canvas.getHeight()) { this.resetImage(); //
+         * updateExportQualityOptions(); }
+         */
 
         // g.setColor(Color.WHITE);
-        g.drawImage(image, 0, 0, null);
-        if (this.shouldDrawCursor)
-            drawCursor(g);
+        // g.drawImage(image, 0, 0, null);
+        // if (this.shouldDrawCursor)
+        // drawCursor(g);
 
-        System.out.println("isbuilt: " +this.mandelbrot.isBuilt() + " hasBeenAborted: " + this.mandelbrot.hasBeenAborted());
+        for (int x = 0; x < this.canvas.getWidth(); x += this.imgTransparent.getWidth()) {
+            for (int y = 0; y < this.canvas.getHeight(); y += this.imgTransparent.getHeight()) {
+                g.drawImage(this.imgTransparent, x, y, null);
+            }
+        }
+
+        if (this.image != null)
+            g.drawImage(this.image, 0, 0, null);
 
         if (this.mandelbrot.isBuilt() && !this.mandelbrot.hasBeenAborted()) {
             System.out.println("draw");
             this.mandelbrotDisplayed = this.mandelbrot;
-            image.setRGB(0, 0, this.mandelbrotDisplayed.getPictureWidth(), this.mandelbrotDisplayed.getPictureHeight(),
-                    this.mandelbrotDisplayed.getPictureData(), 0, this.mandelbrotDisplayed.getPictureWidth());
+            this.image = this.mandelbrotDisplayed.getImage();
             g.drawImage(image, 0, 0, null);
             drawCursor(g);
             //
             updateInfoAboutC();
         } else if (!this.mandelbrot.isBuilding()) {
-            this.mandelbrot.build(this.image.getWidth(), this.image.getHeight(), (double percentage) -> {
+            this.mandelbrot.build((double percentage) -> {
                 this.progressBar.setValue((int) percentage);
             }, () -> {
-                if (this.mandelbrot.getPictureData() == null)
+                if (this.mandelbrot.getImageData() == null)
                     return;
                 this.canvas.repaint();
             });
@@ -550,9 +549,11 @@ public class Main implements MouseListener, KeyListener {
 
     private void updateExportQualityOptions() {
         this.cmbExportQuality.removeAllItems();
-        String lowQuality = this.mandelbrot.getWidth() + " x " + this.mandelbrot.getHeight();
-        String averageQuality = (this.mandelbrot.getWidth() * 2) + " x " + (this.mandelbrot.getHeight() * 2) + " (x2)";
-        String highQuality = (this.mandelbrot.getWidth() * 4) + " x " + (this.mandelbrot.getHeight() * 4) + " (x4)";
+        String lowQuality = this.mandelbrot.getAreaWidth() + " x " + this.mandelbrot.getAreaHeight();
+        String averageQuality = (this.mandelbrot.getAreaWidth() * 2) + " x " + (this.mandelbrot.getAreaHeight() * 2)
+                + " (x2)";
+        String highQuality = (this.mandelbrot.getAreaWidth() * 4) + " x " + (this.mandelbrot.getAreaHeight() * 4)
+                + " (x4)";
         this.cmbExportQuality.addItem(lowQuality);
         this.cmbExportQuality.addItem(averageQuality);
         this.cmbExportQuality.addItem(highQuality);
@@ -560,10 +561,10 @@ public class Main implements MouseListener, KeyListener {
 
     private void drawCursor(Graphics2D g) {
         // Map the complex number c to pixel coordinates
-        int curPixX = (int) (((this.cursorRe - mandelbrotDisplayed.getMinRe()) * mandelbrotDisplayed.getWidth())
+        int curPixX = (int) (((this.cursorRe - mandelbrotDisplayed.getMinRe()) * mandelbrotDisplayed.getAreaWidth())
                 / Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe()));
-        int curPixY = (int) (mandelbrotDisplayed.getHeight()
-                - (((-this.cursorIm + mandelbrotDisplayed.getMinIm()) * mandelbrotDisplayed.getHeight()
+        int curPixY = (int) (mandelbrotDisplayed.getAreaHeight()
+                - (((-this.cursorIm + mandelbrotDisplayed.getMinIm()) * mandelbrotDisplayed.getAreaHeight()
                         / -Math.abs(mandelbrotDisplayed.getMaxIm() - mandelbrotDisplayed.getMinIm()))));
 
         // horizontal
@@ -589,7 +590,10 @@ public class Main implements MouseListener, KeyListener {
     private void onWindowResized() {
         this.mandelbrot.abort();
 
+        
         if (this.chkFixAspectRatio.isSelected()) {
+
+            this.mandelbrot = this.mandelbrot.resizeImage(this.canvas.getWidth(), this.canvas.getHeight());
 
             /*
              * double rangeRe = Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe());
@@ -612,7 +616,8 @@ public class Main implements MouseListener, KeyListener {
             // resetImage();
 
         } else {
-
+            
+            this.mandelbrot = this.mandelbrot.lolToSize(this.canvas.getWidth(), this.canvas.getHeight());
             /*
              * double widthFactor = canvas.getWidth() / (double) this.mandelbrot.getWidth();
              * double heightFactor = canvas.getHeight() / (double)
@@ -629,20 +634,23 @@ public class Main implements MouseListener, KeyListener {
 
         }
 
+        this.canvas.repaint();
+
         // this.canvas.repaint();
     }
 
     private void setMandelbrotContext(Mandelbrot m) {
-        //if (this.mandelbrot.equals(m) && !this.mandelbrot.hasBeenAborted())
-        //    return;s
+        // if (this.mandelbrot.equals(m) && !this.mandelbrot.hasBeenAborted())
+        // return;s
         this.mandelbrot = m;
     }
 
     private void onBtnViewClicked() {
         try {
             ViewWindowDialog dialog = new ViewWindowDialog(frame, mandelbrot, (double[] arr) -> {
-                this.setMandelbrotContext(new Mandelbrot(arr[0], arr[1], arr[2], arr[3], mandelbrot.getNMax(),
-                        mandelbrot.getColorInside(), mandelbrot.getColorGradient()));
+                this.setMandelbrotContext(
+                        new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), arr[0], arr[1], arr[2], arr[3],
+                                mandelbrot.getNMax(), mandelbrot.getInnerColor(), mandelbrot.getColorGradient()));
                 this.chkFixAspectRatio.setSelected(true);
                 frame.getComponentListeners()[0].componentResized(null);
             });
@@ -658,8 +666,9 @@ public class Main implements MouseListener, KeyListener {
         try {
             ColoringDialog dialog = new ColoringDialog(frame, mandelbrot, (int colorInside, int[] gradient) -> {
                 this.mandelbrot.abort();
-                this.setMandelbrotContext(new Mandelbrot(mandelbrot.getMinRe(), mandelbrot.getMinIm(),
-                        mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), mandelbrot.getNMax(), colorInside, gradient));
+                this.setMandelbrotContext(new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(),
+                        mandelbrot.getMinRe(), mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(),
+                        mandelbrot.getNMax(), colorInside, gradient));
                 this.canvas.repaint();
             });
             dialog.setModalityType(ModalityType.APPLICATION_MODAL);
@@ -671,6 +680,7 @@ public class Main implements MouseListener, KeyListener {
     }
 
     private void onCheckFixAspectRatioChange() {
+        this.mandelbrot = this.mandelbrot.extendAreaToImageSize();
         frame.getComponentListeners()[0].componentResized(null);
         this.canvas.repaint();
     }
@@ -682,20 +692,21 @@ public class Main implements MouseListener, KeyListener {
             return;
         }
         this.mandelbrot.abort();
-        this.setMandelbrotContext(new Mandelbrot(mandelbrot.getMinRe(), mandelbrot.getMinIm(), mandelbrot.getMaxRe(),
-                mandelbrot.getMaxIm(), nMax, mandelbrot.getColorInside(), mandelbrot.getColorGradient()));
+        this.setMandelbrotContext(new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), mandelbrot.getMinRe(),
+                mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), nMax, mandelbrot.getInnerColor(),
+                mandelbrot.getColorGradient()));
         this.canvas.repaint();
     }
 
     private void onZoomIn() {
         this.mandelbrot.abort();
-        this.setMandelbrotContext(this.mandelbrot.getZoom(cursorRe, cursorIm, 2.0));
+        this.setMandelbrotContext(this.mandelbrot.zoom(cursorRe, cursorIm, 2.0));
         this.canvas.repaint();
     }
 
     private void onZoomOut() {
         this.mandelbrot.abort();
-        this.setMandelbrotContext(this.mandelbrot.getZoom(cursorRe, cursorIm, 0.5));
+        this.setMandelbrotContext(this.mandelbrot.zoom(cursorRe, cursorIm, 0.5));
         this.canvas.repaint();
     }
 
@@ -705,8 +716,9 @@ public class Main implements MouseListener, KeyListener {
         int height = this.canvas.getHeight();
         double rangeIm = 3;
         double rangeRe = ((double) width / (double) height) * rangeIm;
-        this.setMandelbrotContext(new Mandelbrot(-rangeRe / 2, -rangeIm / 2, rangeRe / 2, rangeIm / 2,
-                mandelbrot.getNMax(), mandelbrot.getColorInside(), mandelbrot.getColorGradient()));
+        this.setMandelbrotContext(
+                new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), -rangeRe / 2, -rangeIm / 2, rangeRe / 2,
+                        rangeIm / 2, mandelbrot.getNMax(), mandelbrot.getInnerColor(), mandelbrot.getColorGradient()));
         this.canvas.repaint();
 
     }

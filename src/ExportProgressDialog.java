@@ -10,7 +10,7 @@ public class ExportProgressDialog extends JDialog {
     JPanel pnlRoot;
     JProgressBar progressBar;
 
-    public ExportProgressDialog(Mandelbrot m, int w, int h, File file) {
+    public ExportProgressDialog(Mandelbrot m, File file) {
 
         this.setTitle("Exportieren...");
         pnlRoot = new JPanel();
@@ -29,10 +29,10 @@ public class ExportProgressDialog extends JDialog {
         setLocation((Toolkit.getDefaultToolkit().getScreenSize().width) / 2 - getWidth() / 2,
                 (Toolkit.getDefaultToolkit().getScreenSize().height) / 2 - getHeight() / 2);
 
-        m.build(w, h, (double p) -> {
+        m.build((double p) -> {
             this.progressBar.setValue((int) p);
         }, () -> {
-            m.saveAsPicture(file.getAbsolutePath());
+            m.saveAsImage(file.getAbsolutePath());
             this.dispose();
         });
 
