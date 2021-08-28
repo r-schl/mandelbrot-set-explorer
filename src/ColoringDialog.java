@@ -9,10 +9,11 @@ import static javax.swing.BorderFactory.createTitledBorder;
 
 public class ColoringDialog extends JDialog {
 
-        JPanel pnlRoot;
-        JPanel pnlMain;
+        JPanel root;
+        JPanel main;
 
         JPanel pnlColors;
+        JButton btnConfirm;
 
         // Color for pixels inside the mandelbrot set
         JButton btnColorInside;
@@ -22,27 +23,28 @@ public class ColoringDialog extends JDialog {
         JButton[] btnsColorGradient;
         JPanel[] pnlsColorGradient;
 
-        public ColoringDialog(JFrame frame, Mandelbrot mandelbrot, OneIntAndIntArrExecutable onConfirm) {
-                super(frame, true);
+        OneIntAndIntArrExecutable onConfirm;
 
+        public ColoringDialog(Mandelbrot mandelbrot, OneIntAndIntArrExecutable onConfirm) {
+
+                this.onConfirm = onConfirm;
                 setTitle("Färbung konfigurieren");
                 setResizable(false);
 
-                pnlRoot = new JPanel();
-                pnlRoot.setBorder(new EmptyBorder(10, 10, 10, 10));
-                pnlRoot.setLayout(new BorderLayout());
+                root = new JPanel();
+                root.setBorder(new EmptyBorder(10, 10, 10, 10));
+                root.setLayout(new BorderLayout());
 
-                pnlMain = new JPanel();
-                pnlMain.setLayout(new BoxLayout(pnlMain, BoxLayout.Y_AXIS));
+                main = new JPanel();
+                main.setLayout(new BoxLayout(main, BoxLayout.Y_AXIS));
 
                 pnlColors = new JPanel();
                 pnlColors.setLayout(new BoxLayout(pnlColors, BoxLayout.X_AXIS));
-                
 
                 JPanel pnlColorInsideContainer = new JPanel();
                 pnlColorInsideContainer.setLayout(new BoxLayout(pnlColorInsideContainer, BoxLayout.X_AXIS));
-                pnlColorInsideContainer.setBorder(createTitledBorder(createEtchedBorder(), "c ∈ 𝕄",
-                                TitledBorder.LEFT, TitledBorder.TOP));
+                pnlColorInsideContainer.setBorder(createTitledBorder(createEtchedBorder(), "c ∈ 𝕄", TitledBorder.LEFT,
+                                TitledBorder.TOP));
 
                 this.btnColorInside = new JButton();
                 this.btnColorInside.setMargin(new Insets(3, 3, 3, 3));
@@ -112,37 +114,61 @@ public class ColoringDialog extends JDialog {
                 }
 
                 pnlColors.add(pnlColorGradientContainer);
-                pnlMain.add(pnlColors);
+                main.add(pnlColors);
 
-                pnlMain.add(Box.createRigidArea(new Dimension(0, 6)));
+                main.add(Box.createRigidArea(new Dimension(0, 6)));
 
-                pnlRoot.add(pnlMain, BorderLayout.CENTER);
 
-                JButton btnConfirm = new JButton("Bestätigen ✓");
-                btnConfirm.setMargin(new Insets(6, 3, 6, 3));
-                btnConfirm.addActionListener(new ActionListener() {
+                root.add(main, BorderLayout.CENTER);
+                root.add(createNavBar(), BorderLayout.PAGE_END);
 
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                                int count = 0;
-                                for (int a = 0; a < pnlsColorGradient.length; a++)
-                                        count += pnlsColorGradient[a].isOpaque() ? 1 : 0;
-                                int[] newGradient = new int[count];
-                                int b = 0;
-                                for (int a = 0; a < pnlsColorGradient.length; a++)
-                                        if (pnlsColorGradient[a].isOpaque())
-                                                newGradient[b++] = pnlsColorGradient[a].getBackground().getRGB();
-                                onConfirm.run(pnlColorInside.getBackground().getRGB(), newGradient);
-                                dispose();
-                        }
-
-                });
-
-                pnlRoot.add(btnConfirm, BorderLayout.PAGE_END);
-
-                setContentPane(pnlRoot);
-                pack();
-                setLocation((Toolkit.getDefaultToolkit().getScreenSize().width) / 2 - getWidth() / 2,
+                this.setContentPane(root);
+                this.pack();
+                this.setLocation((Toolkit.getDefaultToolkit().getScreenSize().width) / 2 - getWidth() / 2,
                                 (Toolkit.getDefaultToolkit().getScreenSize().height) / 2 - getHeight() / 2);
+
+                this.setModalityType(ModalityType.APPLICATION_MODAL);
+                this.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+                this.setVisible(true);
+        }
+
+        private JPanel createNavBar() {
+                JPanel pnlNavigation = new JPanel();
+                pnlNavigation.setLayout(new BorderLayout());
+                pnlNavigation.setBorder(new EmptyBorder(0, 0, 0, 0));
+
+                JPanel pnlNavigationTop = new JPanel();
+                pnlNavigationTop.setLayout(new BoxLayout(pnlNavigationTop, BoxLayout.Y_AXIS));
+                pnlNavigationTop.add(new JSeparator());
+                pnlNavigationTop.add(Box.createRigidArea(new Dimension(0, 3)));
+                pnlNavigation.add(pnlNavigationTop, BorderLayout.PAGE_START);
+
+                JPanel pnlNavigationCenter = new JPanel();
+                pnlNavigationCenter.setLayout(new FlowLayout(FlowLayout.TRAILING, 0, 0));
+
+                JButton btnReset = new JButton("Zurücksetzen");
+                pnlNavigationCenter.add(btnReset);
+
+                pnlNavigationCenter.add(new JLabel(" "));
+
+                btnConfirm = new JButton("Bestätigen ✓");
+                btnConfirm.addActionListener((e) -> onNext());
+                pnlNavigationCenter.add(btnConfirm);
+
+                pnlNavigation.add(pnlNavigationCenter, BorderLayout.CENTER);
+                return pnlNavigation;
+        }
+
+        private void onNext() {
+                int count = 0;
+                for (int a = 0; a < pnlsColorGradient.length; a++)
+                        count += pnlsColorGradient[a].isOpaque() ? 1 : 0;
+                int[] newGradient = new int[count];
+                int b = 0;
+                for (int a = 0; a < pnlsColorGradient.length; a++)
+                        if (pnlsColorGradient[a].isOpaque())
+                                newGradient[b++] = pnlsColorGradient[a].getBackground().getRGB();
+                onConfirm.run(pnlColorInside.getBackground().getRGB(), newGradient);
+                dispose();
         }
 }
