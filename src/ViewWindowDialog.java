@@ -1,14 +1,28 @@
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Toolkit;
 
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
-import javax.swing.border.*;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSeparator;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SpringLayout;
+import javax.swing.UIManager;
+import javax.swing.border.EmptyBorder;
 
 public class ViewWindowDialog extends JDialog {
 
-    JPanel pnlRoot;
-    JPanel pnlMain;
+    private static final double DIFF_EQUAL = 1E-15;
+
+    JPanel main;
+    JPanel pnlMinMax;
 
     JTextField txfMinRe;
     JTextField txfMinIm;
@@ -20,80 +34,153 @@ public class ViewWindowDialog extends JDialog {
     JLabel lblMaxRe;
     JLabel lblMaxIm;
 
-    public ViewWindowDialog(Frame frame, Mandelbrot mandelbrot, DoubleArrExecutable onConfirm) {
+    Mandelbrot mandelbrot;
+    DoubleArrExecutable onConfirm;
 
-        super(frame, true);
+    public ViewWindowDialog(Mandelbrot mandelbrot, DoubleArrExecutable onConfirm) {
 
-        setTitle("View-Window");
-        setResizable(false);
+        this.mandelbrot = mandelbrot;
+        this.onConfirm = onConfirm;
 
-        pnlRoot = new JPanel();
-        pnlRoot.setBorder(new EmptyBorder(10, 10, 10, 10));
-        pnlRoot.setLayout(new BorderLayout());
+        this.setTitle("View-Window anpassen");
+        this.setResizable(false);
+        this.getContentPane().setLayout(new BorderLayout());
 
-        JLabel lblInfo = new JLabel(
-                "<html>Der darzustellende Bereich der komplexen <br> Zahlenebene wird durch folgende vier Werte <br> definiert: </html>");
+        main = new JPanel();
+        main.setBorder(new EmptyBorder(8, 8, 8, 8));
+        main.setLayout(new BoxLayout(main, BoxLayout.Y_AXIS));
 
-        pnlRoot.add(lblInfo, BorderLayout.PAGE_START);
+        JPanel pnlInfo = new JPanel();
+        pnlInfo.setBorder(new EmptyBorder(0, 0, 0, 0));
+        pnlInfo.setLayout(new BoxLayout(pnlInfo, BoxLayout.X_AXIS));
 
-        pnlMain = new JPanel();
+        JTextArea txaInfo = new JTextArea(2, 20);
+        txaInfo.setText(
+                "Der darzustellende Bereich der komplexen Zahlenebene wird durch folgende vier Werte definiert: ");
+        txaInfo.setWrapStyleWord(true);
+        txaInfo.setLineWrap(true);
+        txaInfo.setOpaque(true);
+        txaInfo.setEditable(false);
+        txaInfo.setFocusable(false);
+        txaInfo.setBackground(UIManager.getColor("Label.background"));
+        txaInfo.setFont(UIManager.getFont("Label.font"));
+        pnlInfo.add(txaInfo);
+
+        main.add(pnlInfo);
+
+        main.add(Box.createRigidArea(new Dimension(0, 5)));
+
+        pnlMinMax = new JPanel();
         SpringLayout layout = new SpringLayout();
-        pnlMain.setLayout(layout);
+        pnlMinMax.setLayout(layout);
 
-        lblMinRe = new JLabel("Re min: ", JLabel.TRAILING);
-        pnlMain.add(lblMinRe);
+        lblMinRe = new JLabel("Re(cMin): ", JLabel.TRAILING);
+        pnlMinMax.add(lblMinRe);
         txfMinRe = new JTextField(16);
-        txfMinRe.setText("" + mandelbrot.getMinRe());
+        txfMinRe.setText("" + this.mandelbrot.getMinRe());
         lblMinRe.setLabelFor(txfMinRe);
-        pnlMain.add(txfMinRe);
+        pnlMinMax.add(txfMinRe);
 
-        lblMaxRe = new JLabel("Re max: ", JLabel.TRAILING);
-        pnlMain.add(lblMaxRe);
-        txfMaxRe = new JTextField(16);
-        txfMaxRe.setText("" + mandelbrot.getMaxRe());
-        lblMaxRe.setLabelFor(txfMaxRe);
-        pnlMain.add(txfMaxRe);
-
-        lblMinIm = new JLabel("Im min: ", JLabel.TRAILING);
-        pnlMain.add(lblMinIm);
+        lblMinIm = new JLabel("Im(cMin): ", JLabel.TRAILING);
+        pnlMinMax.add(lblMinIm);
         txfMinIm = new JTextField(16);
-        txfMinIm.setText("" + mandelbrot.getMinIm());
+        txfMinIm.setText("" + this.mandelbrot.getMinIm());
         lblMinIm.setLabelFor(txfMinIm);
-        pnlMain.add(txfMinIm);
+        pnlMinMax.add(txfMinIm);
 
-        lblMaxIm = new JLabel("Im max: ", JLabel.TRAILING);
-        pnlMain.add(lblMaxIm);
+        lblMaxRe = new JLabel("Re(cMax): ", JLabel.TRAILING);
+        pnlMinMax.add(lblMaxRe);
+        txfMaxRe = new JTextField(16);
+        txfMaxRe.setText("" + this.mandelbrot.getMaxRe());
+        lblMaxRe.setLabelFor(txfMaxRe);
+        pnlMinMax.add(txfMaxRe);
+
+        lblMaxIm = new JLabel("Im(cMax): ", JLabel.TRAILING);
+        pnlMinMax.add(lblMaxIm);
         txfMaxIm = new JTextField(16);
-        txfMaxIm.setText("" + mandelbrot.getMaxIm());
+        txfMaxIm.setText("" + this.mandelbrot.getMaxIm());
         lblMaxIm.setLabelFor(txfMaxIm);
-        pnlMain.add(txfMaxIm);
+        pnlMinMax.add(txfMaxIm);
 
-        SpringUtilities.makeCompactGrid(pnlMain, 4, 2, // rows, cols
+        SpringUtilities.makeCompactGrid(pnlMinMax, 4, 2, // rows, cols
                 0, 6, // initX, initY
-                0, 6); // xPad, yPad
-        pnlRoot.add(pnlMain, BorderLayout.CENTER);
+                5, 6); // xPad, yPad
+        main.add(pnlMinMax);
 
-        JButton btnConfirm = new JButton("Bestätigen ✓");
-        btnConfirm.setMargin(new Insets(6, 3, 6, 3));
-        btnConfirm.addActionListener(new ActionListener() {
+        this.add(main, BorderLayout.CENTER);
+        this.add(createNavBar(), BorderLayout.PAGE_END);
 
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                double zMinRe = Double.parseDouble(txfMinRe.getText());
-                double zMinIm = Double.parseDouble(txfMinIm.getText());
-                double zMaxRe = Double.parseDouble(txfMaxRe.getText());
-                double zMaxIm = Double.parseDouble(txfMaxIm.getText());
-                onConfirm.run(new double[]{zMinRe, zMinIm, zMaxRe, zMaxIm});
-                dispose();
-            }
-        });
-
-        pnlRoot.add(btnConfirm, BorderLayout.PAGE_END);
-
-        setContentPane(pnlRoot);
-        pack();
+        this.pack();
+        txaInfo.setSize(txaInfo.getPreferredSize());
+        this.pack();
         setLocation((Toolkit.getDefaultToolkit().getScreenSize().width) / 2 - getWidth() / 2,
                 (Toolkit.getDefaultToolkit().getScreenSize().height) / 2 - getHeight() / 2);
+        this.setModalityType(ModalityType.APPLICATION_MODAL);
+        this.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        this.setVisible(true);
+    }
+
+    private JPanel createNavBar() {
+        int inset = 8;
+
+        JPanel pnlNavigation = new JPanel();
+        pnlNavigation.setLayout(new BorderLayout());
+        pnlNavigation.setBorder(new EmptyBorder(0, 0, 0, 0));
+
+        JPanel pnlNavigationTop = new JPanel();
+        pnlNavigationTop.setLayout(new BoxLayout(pnlNavigationTop, BoxLayout.Y_AXIS));
+        pnlNavigationTop.add(new JSeparator());
+        pnlNavigationTop.add(Box.createRigidArea(new Dimension(0, inset - 1)));
+        pnlNavigation.add(pnlNavigationTop, BorderLayout.PAGE_START);
+
+        pnlNavigation.add(Box.createRigidArea(new Dimension(0, inset)), BorderLayout.PAGE_END);
+
+        JPanel pnlNavigationCenter = new JPanel();
+        pnlNavigationCenter.setLayout(new FlowLayout(FlowLayout.CENTER, inset - 2, 0));
+
+        JButton btnStandard = new JButton("Standard-View ↻");
+        btnStandard.addActionListener((e) -> onStandardView());
+        pnlNavigationCenter.add(btnStandard);
+
+        JButton btnNext = new JButton("Bestätigen ✓");
+        btnNext.addActionListener((e) -> onNext());
+        pnlNavigationCenter.add(btnNext);
+
+        pnlNavigation.add(pnlNavigationCenter, BorderLayout.CENTER);
+        return pnlNavigation;
+    }
+
+    private void onNext() {
+
+        try {
+            double minRe = Double.parseDouble(txfMinRe.getText());
+            double minIm = Double.parseDouble(txfMinIm.getText());
+            double maxRe = Double.parseDouble(txfMaxRe.getText());
+            double maxIm = Double.parseDouble(txfMaxIm.getText());
+            double lenRe = maxRe - minRe;
+            double lenIm = maxIm - minIm;
+            if (lenRe < 0 || Math.abs(lenRe) < DIFF_EQUAL || lenIm < 0 || Math.abs(lenIm) < DIFF_EQUAL) {
+                new MessageDialog("Fehler ⚠",
+                        "Das View-Window ist zu klein oder negativ. Überprüfen Sie bitte ihre Eingaben!");
+            } else {
+                onConfirm.run(new double[] { minRe, minIm, maxRe, maxIm });
+                dispose();
+            }
+        } catch (Exception e) {
+            new MessageDialog("Fehler ⚠", "Die Werte sind ungültig. Bitte überprüfen Sie ihre Eingaben!");
+        }
+
+    }
+
+    private void onStandardView() {
+        int width = this.mandelbrot.getAreaWidth();
+        int height = this.mandelbrot.getAreaHeight();
+        double rangeIm = 3;
+        double rangeRe = ((double) width / (double) height) * rangeIm;
+        this.txfMinRe.setText("" + (-rangeRe / 2));
+        this.txfMinIm.setText("" + (-rangeIm / 2));
+        this.txfMaxRe.setText("" + (rangeRe / 2));
+        this.txfMaxIm.setText("" + (rangeIm / 2));
     }
 
 }

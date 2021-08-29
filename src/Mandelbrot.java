@@ -23,7 +23,7 @@ import org.yaml.snakeyaml.error.YAMLException;
 public class Mandelbrot {
     private static final String OUT_OF_MEMORY_ERR = "\n>> An OutOfMemoryError occured. Please reduce the image size and try again. <<";
     private static final int PROGRESS_BAR_WIDTH = 30;
-    private static final double DIFF_EQUAL = 1E-7;
+    private static final double DIFF_EQUAL = 1E-15;
 
     private final int NUMTHREADS = Runtime.getRuntime().availableProcessors();
     private final int ESCAPE_RADIUS = 2;
@@ -49,7 +49,7 @@ public class Mandelbrot {
      */
     private int[] iterationData;
     private int rowsCompleted = 0;
-    private double percentageCompleted = 0;
+    private int percentageCompleted = 0;
     private int finishedThreads = 0;
     private long startTime;
     private SwingWorker<int[], Integer>[] workerThreads;
@@ -261,17 +261,6 @@ public class Mandelbrot {
         return this.areaImage;
     }
 
-    /*
-     * public BufferedImage getAreaImage() { if (!isBuilt) return null; if
-     * (this.areaImage != null) { // System.out.println("alredy finishdd"); return
-     * this.areaImage; } this.areaImage = new BufferedImage(this.areaWidth,
-     * this.areaHeight, BufferedImage.TYPE_INT_RGB); int[] rgbArray = new
-     * int[this.areaWidth * this.areaHeight]; for (int i = 0; i <
-     * this.iterationData.length; i++) rgbArray[i] =
-     * this.colorPallete[this.iterationData[i]]; this.areaImage.setRGB(0, 0,
-     * this.areaWidth, this.areaHeight, rgbArray, 0, this.areaWidth); return
-     * this.areaImage; }
-     */
 
     public int[] getBackgroundPattern() {
         int[] pattern = new int[this.fullWidth * this.fullHeight];
@@ -304,11 +293,6 @@ public class Mandelbrot {
             this.imageRGBArray = new int[this.fullWidth * this.fullHeight];
             Arrays.fill(this.imageRGBArray, this.backgroundColor);
         }
-        /*
-         * for (int i = 0; i < this.imageRGBArray.length; i++) { this.imageRGBArray[i] =
-         * i % 2 == 0 ? this.backgroundColor : (0xFFFFFF - this.backgroundColor) |
-         * 0xFF000000; }
-         */
 
         int[] areaRGBArray = this.getAreaRGBArray();
 
@@ -318,23 +302,6 @@ public class Mandelbrot {
                 this.imageRGBArray[this.fullWidth * y + x] = areaRGBArray[i++];
             }
         }
-
-        // border
-        /*
-         * if ((this.offsetY - 2) * this.fullWidth >= 0 && (this.offsetY +
-         * this.areaHeight + 1) * this.fullWidth < this.imageRGBArray.length) { for (int
-         * x = this.offsetX; x < this.areaWidth; x++) { this.imageRGBArray[(this.offsetY
-         * - 2) * this.fullWidth + x] = (0xFFFFFF - backgroundColor) | 0xFF000000;
-         * this.imageRGBArray[(this.offsetY + this.areaHeight + 1) * this.fullWidth + x]
-         * = (0xFFFFFF - backgroundColor) | 0xFF000000; } }
-         * 
-         * if ((this.offsetX - 2) >= 0 && (this.offsetX + this.areaHeight + 1 <
-         * this.imageRGBArray.length)) for (int y = this.offsetY; y < this.areaHeight;
-         * y++) { this.imageRGBArray[y * this.fullWidth + (this.offsetX - 2)] =
-         * (0xFFFFFF - backgroundColor) | 0xFF000000; this.imageRGBArray[y *
-         * this.fullWidth + (this.offsetX + this.areaWidth + 1)] = (0xFFFFFF -
-         * backgroundColor) | 0xFF000000; }
-         */
         return this.imageRGBArray;
     }
 
@@ -344,43 +311,7 @@ public class Mandelbrot {
         this.fullImage = new BufferedImage(this.fullWidth, this.fullHeight, BufferedImage.TYPE_INT_RGB);
         this.fullImage.setRGB(0, 0, this.fullWidth, this.fullHeight, this.getFullRGBArray(), 0, this.fullWidth);
         return this.fullImage;
-    }
-
-    /*
-     * public BufferedImage getImage() { if (!isBuilt) return null; BufferedImage
-     * img = new BufferedImage(this.fullWidth, this.fullHeight,
-     * BufferedImage.TYPE_INT_RGB); Graphics2D g = (Graphics2D)
-     * img.createGraphics(); g.setColor(new Color(BACKGROUND)); g.fillRect(0, 0,
-     * fullWidth, fullHeight); int startX = (int) Math.ceil((this.fullWidth -
-     * this.areaWidth) / 2.0D); int startY = (int) Math.ceil((this.fullHeight -
-     * this.areaHeight) / 2.0D); g.drawImage(this.getAreaImage(), null, startX,
-     * startY); return img; }
-     */
-
-    /*
-     * public BufferedImage getResizedAreaImage(int w, int h) { BufferedImage img =
-     * new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB); ((Graphics2D)
-     * img.createGraphics()).drawImage(this.getAreaImage(), 0, 0, w, h, null);
-     * return img; }
-     */
-    /*
-     * public BufferedImage getResizedPreviewImage(int fullWidth, int fullHeight) {
-     * if (!isBuilt) return null; // calculate area dimensions double rangeRe =
-     * maxRe - minRe; double rangeIm = maxIm - minIm; int areaWidth = (int)
-     * Math.ceil((double) fullHeight * (rangeRe / rangeIm)); int areaHeight = (int)
-     * fullHeight; if (areaWidth > fullWidth) { areaWidth = fullWidth; areaHeight =
-     * (int) Math.ceil((double) fullWidth * (rangeIm / rangeRe)); }
-     * 
-     * BufferedImage img = new BufferedImage(fullWidth, fullHeight,
-     * BufferedImage.TYPE_INT_RGB);
-     * 
-     * Graphics2D g = (Graphics2D) img.createGraphics(); int startX = (int)
-     * Math.ceil((fullWidth - areaWidth) / 2.0D); int startY = (int)
-     * Math.ceil((fullHeight - areaHeight) / 2.0D);
-     * 
-     * g.drawImage(this.getAreaImage(), startX, startY, areaWidth, areaHeight,
-     * null); return img; }
-     */
+    }     
 
     public Mandelbrot extendAreaToImageSize() {
 
@@ -563,7 +494,7 @@ public class Mandelbrot {
         }, onFinish);
     }
 
-    public void build(final DoubleRunnable onProgress, final Runnable onFinish) {
+    public void build(final IntegerRunnable onProgress, final Runnable onFinish) {
 
         // make sure we are on the Swing UI Thread
         if (!SwingUtilities.isEventDispatchThread()) {
@@ -638,8 +569,11 @@ public class Mandelbrot {
                 protected void process(List<Integer> rows) {
                     if (isBuilding) {
                         rowsCompleted = rowsCompleted + rows.size();
-                        percentageCompleted = rowsCompleted * 100.0D / (double) areaHeight;
-                        onProgress.run(percentageCompleted);
+                        int lastPercentage = percentageCompleted;
+                        percentageCompleted = (int) Math.round(rowsCompleted * 100.0D / (double) areaHeight);
+                        if (lastPercentage != percentageCompleted) {
+                            onProgress.run(percentageCompleted);
+                        } 
                     }
                 }
 
@@ -665,6 +599,7 @@ public class Mandelbrot {
                         finishedThreads = 0;
                         isBuilt = true;
                         isBuilding = false;
+                        onProgress.run(100);
                         onFinish.run();
                     }
 
@@ -836,7 +771,7 @@ public class Mandelbrot {
     }
 
     @FunctionalInterface
-    interface DoubleRunnable {
-        void run(double val);
+    interface IntegerRunnable {
+        void run(int val);
     }
 }

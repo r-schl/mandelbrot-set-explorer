@@ -1,33 +1,51 @@
 
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.event.MenuEvent;
-import javax.swing.event.MenuListener;
-import javax.swing.plaf.ButtonUI;
-import org.yaml.snakeyaml.error.*;
-import javax.swing.text.*;
-
-import org.yaml.snakeyaml.scanner.ScannerException;
-
-import javax.imageio.ImageIO;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.awt.image.*;
-import java.beans.PropertyChangeListener;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.awt.Dialog.*;
-import java.awt.font.*;
-import java.util.*;
-
-import javax.swing.filechooser.*;
-
 import static javax.swing.BorderFactory.createEtchedBorder;
 import static javax.swing.BorderFactory.createTitledBorder;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.RenderingHints;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
+
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
+import javax.swing.JMenuBar;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JSpinner;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+import org.yaml.snakeyaml.error.YAMLException;
 
 public class Main implements MouseListener, KeyListener {
 
@@ -54,7 +72,7 @@ public class Main implements MouseListener, KeyListener {
 
     JProgressBar progressBar;
 
-    JSpinner spnIterations;
+    JSpinner spnMaxIteration;
 
     JPanel pnlSaveAsPicture;
     JComboBox<String> cmbExportQuality;
@@ -185,8 +203,8 @@ public class Main implements MouseListener, KeyListener {
         JButton btnConfig = new JButton("Anpassen 🖉");
         btnConfig.setMargin(new Insets(2, 6, 2, 6));
         btnConfig.setFocusable(false);
-        btnConfig.setToolTipText("Verwendete Farben anpassen");
-        btnConfig.addActionListener(e -> onBtnConfigClicked());
+        btnConfig.setToolTipText("Färbung anpassen");
+        btnConfig.addActionListener(e -> onColoringConfigure());
         pnlConfig.add(btnConfig);
 
         pnlMenuBar.add(pnlConfig);
@@ -198,16 +216,16 @@ public class Main implements MouseListener, KeyListener {
         pnlIterations.setBackground(Color.WHITE);
         pnlIterations.setBorder(createTitledBorder(createEtchedBorder(), "nMax", TitledBorder.LEFT, TitledBorder.TOP));
 
-        spnIterations = new JSpinner();
-        spnIterations.addChangeListener(e -> {
+        spnMaxIteration = new JSpinner();
+        spnMaxIteration.addChangeListener(e -> {
             this.frame.requestFocus();
-            onIterationsChange();
+            onMaxIterationChange();
         });
-        spnIterations.setPreferredSize(new Dimension(70, 21));
-        spnIterations.setMaximumSize(new Dimension(70, 21));
-        spnIterations.setMinimumSize(new Dimension(70, 21));
+        spnMaxIteration.setPreferredSize(new Dimension(70, 21));
+        spnMaxIteration.setMaximumSize(new Dimension(70, 21));
+        spnMaxIteration.setMinimumSize(new Dimension(70, 21));
 
-        pnlIterations.add(spnIterations);
+        pnlIterations.add(spnMaxIteration);
         pnlMenuBar.add(pnlIterations);
 
         // pnlMenuBar.add(Box.createRigidArea(new Dimension(6, 0)));
@@ -217,11 +235,11 @@ public class Main implements MouseListener, KeyListener {
         pnlView.setBackground(Color.WHITE);
         pnlView.setBorder(
                 createTitledBorder(createEtchedBorder(), VIEW_PANEL_TITLE, TitledBorder.LEFT, TitledBorder.TOP));
-        JButton btnView = new JButton("Ändern");
+        JButton btnView = new JButton("Bearbeiten");
         btnView.setMargin(new Insets(2, 6, 2, 6));
         btnView.setFocusable(false);
-        btnView.setToolTipText("View-Window exakt anpassen");
-        btnView.addActionListener(e -> onBtnViewClicked());
+        btnView.setToolTipText("View-Window bearbeiten");
+        btnView.addActionListener(e -> onViewConfigure());
         pnlView.add(btnView);
         pnlView.add(Box.createRigidArea(new Dimension(3, 0)));
 
@@ -245,7 +263,7 @@ public class Main implements MouseListener, KeyListener {
 
         btnZoomReset = new ImageButton("res/undo-arrow.png");
         btnZoomReset.setFocusable(false);
-        btnZoomReset.setToolTipText("Standard View-Window wiederherstellen");
+        btnZoomReset.setToolTipText("Auf Standard View-Window zurücksetzen");
         btnZoomReset.setPreferredSize(new Dimension(21, 21));
         btnZoomReset.setMinimumSize(new Dimension(21, 21));
         btnZoomReset.setMaximumSize(new Dimension(21, 21));
@@ -257,8 +275,8 @@ public class Main implements MouseListener, KeyListener {
         chkFixAspectRatio = new JCheckBox("Sperren");
         chkFixAspectRatio.setFocusable(false);
         chkFixAspectRatio
-                .setToolTipText("Beeinflussung des View-Windows durch Größenänderungen des Fensters verhindern");
-        chkFixAspectRatio.addActionListener(e -> onCheckFixAspectRatioChange());
+                .setToolTipText("View-Window sperren");
+        chkFixAspectRatio.addActionListener(e -> onFixViewWindowChange());
         pnlView.add(chkFixAspectRatio);
 
         pnlMenuBar.add(pnlView);
@@ -270,11 +288,11 @@ public class Main implements MouseListener, KeyListener {
                 createTitledBorder(createEtchedBorder(), CURSOR_PANEL_TITLE, TitledBorder.LEFT, TitledBorder.TOP));
 
         JPanel pnlCursor = new JPanel();
-        pnlCursor.setPreferredSize(new Dimension(222, 21));
-        pnlCursor.setMinimumSize(new Dimension(222, 21));
-        pnlCursor.setMaximumSize(new Dimension(222, 21));
+        pnlCursor.setPreferredSize(new Dimension(200, 21));
+        pnlCursor.setMinimumSize(new Dimension(200, 21));
+        pnlCursor.setMaximumSize(new Dimension(200, 21));
 
-        JLabel lblCursorRe = new JLabel("Re(c) = ");
+        JLabel lblCursorRe = new JLabel("Re(c)=");
         pnlCursor.add(lblCursorRe);
         txfCursorRe = new JTextField(6);
         txfCursorRe.setCaretPosition(0);
@@ -287,7 +305,7 @@ public class Main implements MouseListener, KeyListener {
             onCursorChange();
         });
         pnlCursor.add(txfCursorRe);
-        JLabel lblCursorIm = new JLabel(" Im(c) = ");
+        JLabel lblCursorIm = new JLabel(" Im(c)=");
         pnlCursor.add(lblCursorIm);
         txfCursorIm = new JTextField(6);
 
@@ -340,7 +358,6 @@ public class Main implements MouseListener, KeyListener {
         };
         canvas.setDoubleBuffered(true);
         canvas.addMouseListener(this);
-        // canvas.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
 
         frame.getContentPane().add(canvas, BorderLayout.CENTER);
 
@@ -364,20 +381,11 @@ public class Main implements MouseListener, KeyListener {
         this.mandelbrotDisplayed = new Mandelbrot(canvas.getWidth(), canvas.getHeight(), -1.5 * ar, -1.5, 1.5 * ar, 1.5,
                 100, 0x000000, new int[] { 0xff003c, 0xFFFFFF });
 
-        this.spnIterations.setValue(mandelbrot.getNMax());
+        this.spnMaxIteration.setValue(mandelbrot.getNMax());
         this.lblInfoAboutC.setText("c ∈ 𝕄 (" + this.mandelbrot.getNMax() + "/" + this.mandelbrot.getNMax() + ")");
-        // this.frame.setTitle("Mandelbrot Fraktal-Generator - " + + " Prozessor(en)");
 
         lblStatus.setText("   Robert Schlosshan | Mandelbrot Fraktal-Generator v1.0   ("
                 + Runtime.getRuntime().availableProcessors() + " Prozessoren)");
-
-        InputStream resourceBuff = this.getClass().getResourceAsStream("res/transparent.png");
-        try {
-            imgTransparent = ImageIO.read(resourceBuff);
-        } catch (IOException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
-        }
 
         putCursor(0, 0);
         if (pathToOpen != null)
@@ -398,21 +406,19 @@ public class Main implements MouseListener, KeyListener {
             try {
                 this.mandelbrot.exportYAML(file.getAbsolutePath());
             } catch (FileNotFoundException | UnsupportedEncodingException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                new MessageDialog("Fehler ⚠",
+                        "Während des Speichervorgangs ist ein Fehler aufgetreten. Kontaktieren Sie bitte den Entwickler. ");
             }
         }
     }
 
     private void importYAML(String path) {
-        this.mandelbrot.abort();
         try {
-            this.mandelbrot = Mandelbrot.fromYAMLFile(path, this.canvas.getWidth(), this.canvas.getHeight());
-            this.spnIterations.setValue(this.mandelbrot.getNMax());
+            this.setMandelbrot(Mandelbrot.fromYAMLFile(path, this.canvas.getWidth(), this.canvas.getHeight()));
+            this.spnMaxIteration.setValue(this.mandelbrot.getNMax());
             this.chkFixAspectRatio.setSelected(true);
         } catch (FileNotFoundException | YAMLException | ConfigDataException e) {
-            new MessageDialog("Fehler!",
-                    "<html> Die Datei ist beschädigt! <br> Sie konnte daher nicht geöffnet werden. <html>");
+            new MessageDialog("Fehler ⚠", "Die Datei ist beschädigt und konnte daher nicht geöffnet werden. ");
         }
         this.onWindowResized();
         this.canvas.repaint();
@@ -432,28 +438,27 @@ public class Main implements MouseListener, KeyListener {
 
     private void onExportImage() {
         new SaveDialog(this.mandelbrot);
-        this.mandelbrot = new Mandelbrot(this.mandelbrot);
-        this.canvas.repaint();
+        if (!this.mandelbrot.isBuilt()) {
+            this.mandelbrot = new Mandelbrot(this.mandelbrot);
+            this.canvas.repaint();
+        }
     }
 
-    private void resetImage() {
-        BufferedImage newImg = new BufferedImage(this.canvas.getWidth(), this.canvas.getHeight(),
-                BufferedImage.TYPE_INT_RGB);
-        Graphics2D graphics = newImg.createGraphics();
-        for (int x = 0; x < newImg.getWidth(); x += this.imgTransparent.getWidth()) {
-            for (int y = 0; y < newImg.getHeight(); y += this.imgTransparent.getHeight()) {
-                graphics.drawImage(this.imgTransparent, x, y, null);
-            }
+    private void setMandelbrot(Mandelbrot m) {
+        if (!this.mandelbrot.equals(m)) {
+            this.mandelbrot.abort();
+            this.mandelbrot = m;
         }
-        System.out.println("reset");
-        // graphics.drawImage(this.image, 0, 0, null);
-        // this.image = newImg;
     }
 
     private void paintCanvas(Graphics2D g) {
         if (!SwingUtilities.isEventDispatchThread())
             new Exception("Not EventDispatchThread").printStackTrace();
         // At this point we are on the Swing UI Thread
+
+        if (!this.chkFixAspectRatio.isSelected()) {
+            this.setMandelbrot(this.mandelbrot.extendAreaToImageSize());
+        }
 
         // Configure rendering hints
         RenderingHints rh = new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -472,7 +477,7 @@ public class Main implements MouseListener, KeyListener {
         }
 
         if (!this.mandelbrot.isBuilding() && !this.mandelbrot.isBuilt()) {
-            this.mandelbrot.build((double percentage) -> {
+            this.mandelbrot.build((int percentage) -> {
                 // On building progress
                 this.progressBar.setValue((int) percentage);
                 this.lblProgress.setText((int) percentage + "% berechnet   ");
@@ -486,18 +491,6 @@ public class Main implements MouseListener, KeyListener {
                 this.canvas.repaint();
             });
         }
-    }
-
-    private void updateExportQualityOptions() {
-        this.cmbExportQuality.removeAllItems();
-        String lowQuality = this.mandelbrot.getAreaWidth() + " x " + this.mandelbrot.getAreaHeight();
-        String averageQuality = (this.mandelbrot.getAreaWidth() * 2) + " x " + (this.mandelbrot.getAreaHeight() * 2)
-                + " (x2)";
-        String highQuality = (this.mandelbrot.getAreaWidth() * 4) + " x " + (this.mandelbrot.getAreaHeight() * 4)
-                + " (x4)";
-        this.cmbExportQuality.addItem(lowQuality);
-        this.cmbExportQuality.addItem(averageQuality);
-        this.cmbExportQuality.addItem(highQuality);
     }
 
     private BufferedImage getImageWithCursor() {
@@ -555,181 +548,111 @@ public class Main implements MouseListener, KeyListener {
     }
 
     private void onWindowResized() {
-        this.mandelbrot.abort();
-
-        if (this.chkFixAspectRatio.isSelected()) {
-
-            this.mandelbrot = this.mandelbrot.resizeImage(this.canvas.getWidth(), this.canvas.getHeight());
-
-            /*
-             * if (this.image.getWidth() != this.canvas.getWidth() || this.image.getHeight()
-             * != this.canvas.getHeight()) this.image =
-             * this.mandelbrotDisplayed.getResizedPreviewImage(this.canvas.getWidth(),
-             * this.canvas.getHeight());
-             */
-
-            /*
-             * double rangeRe = Math.abs(mandelbrot.getMaxRe() - mandelbrot.getMinRe());
-             * double rangeIm = Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm());
-             * double aspectRatio = rangeRe / rangeIm;
-             * 
-             * this.imgWidth = (int) Math.ceil(this.canvas.getHeight() * aspectRatio);
-             * this.imgHeight = (int) this.canvas.getHeight();
-             * 
-             * if (this.imgWidth > this.canvas.getWidth()) { this.imgWidth =
-             * this.canvas.getWidth(); this.imgHeight = (int)
-             * Math.ceil(this.canvas.getWidth() * (1.0d / aspectRatio)); }
-             * 
-             * this.setMandelbrotContext(new Mandelbrot(mandelbrot.getMinRe(),
-             * mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(),
-             * mandelbrot.getNMax(), mandelbrot.getColorInside(),
-             * mandelbrot.getColorGradient()));
-             */
-
-            // resetImage();
-
-        } else {
-
-            this.mandelbrot = this.mandelbrot.lolToSize(this.canvas.getWidth(), this.canvas.getHeight());
-            /*
-             * double widthFactor = canvas.getWidth() / (double) this.mandelbrot.getWidth();
-             * double heightFactor = canvas.getHeight() / (double)
-             * this.mandelbrot.getHeight();
-             * 
-             * double maxReNew = mandelbrot.getMinRe() + Math.abs(mandelbrot.getMaxRe() -
-             * mandelbrot.getMinRe()) * widthFactor; double minImNew = mandelbrot.getMaxIm()
-             * - Math.abs(mandelbrot.getMaxIm() - mandelbrot.getMinIm()) * heightFactor;
-             * 
-             * this.setMandelbrotContext(new Mandelbrot(mandelbrot.getMinRe(), minImNew,
-             * maxReNew, mandelbrot.getMaxIm(), mandelbrot.getNMax(),
-             * mandelbrot.getColorInside(), mandelbrot.getColorGradient()));
-             */
-
-        }
-
+        if (this.chkFixAspectRatio.isSelected())
+            this.setMandelbrot(this.mandelbrot.resizeImage(this.canvas.getWidth(), this.canvas.getHeight()));
+        else
+            this.setMandelbrot(this.mandelbrot.lolToSize(this.canvas.getWidth(), this.canvas.getHeight()));
         this.canvas.repaint();
-
-        // this.canvas.repaint();
     }
 
-    private void setMandelbrotContext(Mandelbrot m) {
-        // if (this.mandelbrot.equals(m) && !this.mandelbrot.hasBeenAborted())
-        // return;s
-        this.mandelbrot = m;
-    }
-
-    private void onBtnViewClicked() {
-        try {
-            ViewWindowDialog dialog = new ViewWindowDialog(frame, mandelbrot, (double[] arr) -> {
-                this.setMandelbrotContext(
+    private void onViewConfigure() {
+        new ViewWindowDialog(mandelbrot, (double[] arr) -> {
+            try {
+                this.setMandelbrot(
                         new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), arr[0], arr[1], arr[2], arr[3],
                                 mandelbrot.getNMax(), mandelbrot.getInnerColor(), mandelbrot.getColorGradient()));
-                this.chkFixAspectRatio.setSelected(true);
-                frame.getComponentListeners()[0].componentResized(null);
-            });
-            dialog.setModalityType(ModalityType.APPLICATION_MODAL);
-            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-            dialog.setVisible(true);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+            } catch (Exception e) {
+                new MessageDialog("Fehler ⚠", "Das View-Window ist zu klein oder negativ. Überprüfen Sie bitte ihre Eingaben! ");
+            }
+
+            this.chkFixAspectRatio.setSelected(true);
+            frame.getComponentListeners()[0].componentResized(null);
+        });
+
     }
 
-    private void onBtnConfigClicked() {
-        try {
-            ColoringDialog dialog = new ColoringDialog(mandelbrot, (int colorInside, int[] gradient) -> {
-                this.mandelbrot.abort();
-                this.setMandelbrotContext(new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(),
-                        mandelbrot.getMinRe(), mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(),
-                        mandelbrot.getNMax(), colorInside, gradient));
-                this.canvas.repaint();
-            });
-           
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+    private void onColoringConfigure() {
+        new ColoringDialog(mandelbrot, (int colorInside, int[] gradient) -> {
+            // this.mandelbrot.abort();
+            this.setMandelbrot(new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), mandelbrot.getMinRe(),
+                    mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), mandelbrot.getNMax(),
+                    colorInside, gradient));
+            this.canvas.repaint();
+        });
     }
 
-    private void onCheckFixAspectRatioChange() {
-        this.mandelbrot = this.mandelbrot.extendAreaToImageSize();
-        // frame.getComponentListeners()[0].componentResized(null);
+    private void onFixViewWindowChange() {
+        this.setMandelbrot(this.mandelbrot.extendAreaToImageSize());
         this.canvas.repaint();
     }
 
-    private void onIterationsChange() {
-        int nMax = (int) this.spnIterations.getValue();
+    private void onMaxIterationChange() {
+        int nMax = (int) this.spnMaxIteration.getValue();
         if (nMax < 0) {
-            this.spnIterations.setValue(0);
+            this.spnMaxIteration.setValue(0);
             return;
         }
-        this.mandelbrot.abort();
-        this.setMandelbrotContext(new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), mandelbrot.getMinRe(),
+        this.setMandelbrot(new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), mandelbrot.getMinRe(),
                 mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), nMax, mandelbrot.getInnerColor(),
                 mandelbrot.getColorGradient()));
         this.canvas.repaint();
     }
 
     private void onZoomIn() {
-        this.mandelbrot.abort();
-        this.setMandelbrotContext(this.mandelbrot.zoom(cursorRe, cursorIm, 2.0));
+        try {
+            this.setMandelbrot(this.mandelbrot.zoom(cursorRe, cursorIm, 2.0));
+        } catch (Exception e) {
+            new MessageDialog("Achtung ⚠",
+                    "Sie haben die maximale Zoomtiefe erreicht! Weiteres Hineinzoomen ist nicht möglich. ");
+        }
         this.canvas.repaint();
     }
 
     private void onZoomOut() {
-        this.mandelbrot.abort();
-        this.setMandelbrotContext(this.mandelbrot.zoom(cursorRe, cursorIm, 0.5));
+        this.setMandelbrot(this.mandelbrot.zoom(cursorRe, cursorIm, 0.5));
         this.canvas.repaint();
     }
 
     private void onResetView() {
-        this.mandelbrot.abort();
         int width = this.mandelbrot.getAreaWidth();
         int height = this.mandelbrot.getAreaHeight();
         double rangeIm = 3;
         double rangeRe = ((double) width / (double) height) * rangeIm;
-        this.setMandelbrotContext(
+        this.setMandelbrot(
                 new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), -rangeRe / 2, -rangeIm / 2, rangeRe / 2,
                         rangeIm / 2, mandelbrot.getNMax(), mandelbrot.getInnerColor(), mandelbrot.getColorGradient()));
         this.canvas.repaint();
     }
 
     private void updateInfoAboutC() {
-        /*
-         * Mandelbrot mand = new Mandelbrot(this.cursorRe, this.cursorIm, this.cursorRe,
-         * this.cursorIm, this.mandelbrot.getNMax(), 0x000000, new int[] { 0xFFFFFF });
-         * mand.build(1, 1, () -> { String txt = ""; int[] data = mand.getData(); int
-         * iterations = data[0]; // txt += ((iterations == mand.getNMax() + 1) ? " ∈ " :
-         * " ∉ ") + "𝕄"; txt += "(" + (iterations) + "/" + mand.getNMax() + ")";
-         * this.lblInfoAboutC.setText(txt); });
-         */
-
+        Mandelbrot mand = new Mandelbrot(1, 1, this.cursorRe, this.cursorIm - 0.1, this.cursorRe + 0.1, this.cursorIm,
+                this.mandelbrot.getNMax(), 0x000000, new int[] { 0xFFFFFF });
+        mand.build(() -> {
+            String txt = "c";
+            int[] data = mand.getAreaIterationArray();
+            int iterations = data[0];
+            txt += ((iterations == mand.getNMax() + 1) ? " ∈ " : " ∉ ") + "𝕄";
+            txt += "(" + (iterations) + "/" + mand.getNMax() + ")";
+            this.lblInfoAboutC.setText(txt);
+        });
     }
-
-    /*
-     * private void moveCursor(int up, int right, int down, int left) { // Map the
-     * complex number c to pixel coordinates int curPixX = (int) (((this.cursorRe -
-     * mandelbrotDisplayed.getMinRe()) * mandelbrotDisplayed.getAreaWidth()) /
-     * Math.abs(mandelbrotDisplayed.getMaxRe() - mandelbrotDisplayed.getMinRe()));
-     * int curPixY = (int) (mandelbrotDisplayed.getAreaHeight() - (((-this.cursorIm
-     * + mandelbrotDisplayed.getMinIm()) * mandelbrotDisplayed.getAreaHeight() /
-     * -Math.abs(mandelbrotDisplayed.getMaxIm() -
-     * mandelbrotDisplayed.getMinIm())))); curPixX += right; curPixX -= left;
-     * curPixY -= up; curPixY += down; this.putCursorFromPixelCoordinates(curPixX,
-     * curPixY); }
-     */
 
     boolean blockOnCursorChange = false;
 
     private void onCursorChange() {
+
         if (!blockOnCursorChange) {
             try {
                 this.cursorRe = Double.parseDouble(this.txfCursorRe.getText());
                 this.cursorIm = Double.parseDouble(this.txfCursorIm.getText());
             } catch (Exception e) {
-                // wrong input
+                new MessageDialog("Fehler ⚠",
+                        "Die Cursor-Werte sind ungültig. Bitte überprüfen Sie ihre Eingaben! ");
+                this.putCursor(this.cursorRe, this.cursorIm);
             }
             this.canvas.repaint();
         }
+        this.updateInfoAboutC();
     }
 
     private void putCursor(double re, double im) {
