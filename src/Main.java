@@ -81,6 +81,9 @@ public class Main implements MouseListener, KeyListener {
     JPanel pnlSaveAsPicture;
     JComboBox<String> cmbExportQuality;
 
+    double zoomFactor = 1;
+    double buildPercentage = 0;
+
     final String FRAME_TITLE = "Mandelbrot Fraktal-Generator";
     final String VIEW_PANEL_TITLE = "View-Window";
     final String CURSOR_PANEL_TITLE = "Cursor c";
@@ -403,6 +406,7 @@ public class Main implements MouseListener, KeyListener {
         putCursor(0, 0);
         if (pathToOpen != null)
             importYAML(pathToOpen);
+
         this.canvas.repaint();
     }
 
@@ -470,10 +474,10 @@ public class Main implements MouseListener, KeyListener {
             new Exception("Not EventDispatchThread").printStackTrace();
         // At this point we are on the Swing UI Thread
 
-
-    /*     if (!this.chkFixAspectRatio.isSelected()) {
-            this.setMandelbrot(this.mandelbrot.extendAreaToImageSize());
-        } */
+        /*
+         * if (!this.chkFixAspectRatio.isSelected()) {
+         * this.setMandelbrot(this.mandelbrot.extendAreaToImageSize()); }
+         */
 
         // Configure rendering hints
         RenderingHints rh = new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -496,13 +500,17 @@ public class Main implements MouseListener, KeyListener {
                 this.mandelbrot.build((Integer percentage) -> {
                     // On building progress
                     this.progressBar.setValue((int) percentage);
-                    this.lblProgress.setText((int) percentage + "% berechnet   ");
+                    this.buildPercentage = (int) percentage;
+                    this.lblProgress.setText("Zoom: " + zoomFactor + "  " + buildPercentage + "% berechnet   ");
                 }, () -> {
                     if (!this.mandelbrot.isBuilt())
                         return;
                     // When building is done
                     this.mandelbrotDisplayed = this.mandelbrot;
                     this.areaImage = this.mandelbrotDisplayed.getAreaImage();
+
+                    // update zoom factor
+                    this.updateZoomFactorInfo();
 
                     this.canvas.repaint();
                 });
@@ -511,6 +519,13 @@ public class Main implements MouseListener, KeyListener {
                 this.mandelbrot = new Mandelbrot(mandelbrotDisplayed);
             }
         }
+    }
+
+    private void updateZoomFactorInfo() {
+        double factor = (3.0D / this.mandelbrotDisplayed.getRangeIm());
+        this.zoomFactor = (double) Math.round(factor * 10000000d) / 10000000d;
+        System.out.println(factor);
+        this.lblProgress.setText("Zoom: " + zoomFactor + "  " + buildPercentage + "% berechnet   ");
     }
 
     private BufferedImage getImageWithCursor() {
