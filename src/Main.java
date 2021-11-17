@@ -10,6 +10,7 @@ import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.event.ComponentAdapter;
+import javax.imageio.ImageIO;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -22,6 +23,7 @@ import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 
 import javax.swing.Box;
@@ -46,6 +48,8 @@ import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.yaml.snakeyaml.error.YAMLException;
+
+import throwables.MandelbrotConfigException;
 
 public class Main implements MouseListener, KeyListener {
 
@@ -125,6 +129,16 @@ public class Main implements MouseListener, KeyListener {
 
         // this method is executed on the Swing UI Thread
         frame = new JFrame(FRAME_TITLE);
+
+        try {
+            InputStream resourceBuff = this.getClass().getResourceAsStream("res/icon.jpg");
+            BufferedImage icon = ImageIO.read(resourceBuff);
+            frame.setIconImage(icon);
+        } catch (Exception e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+
         frame.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
                 System.exit(0);
@@ -274,8 +288,7 @@ public class Main implements MouseListener, KeyListener {
 
         chkFixAspectRatio = new JCheckBox("Sperren");
         chkFixAspectRatio.setFocusable(false);
-        chkFixAspectRatio
-                .setToolTipText("View-Window sperren");
+        chkFixAspectRatio.setToolTipText("View-Window sperren");
         chkFixAspectRatio.addActionListener(e -> onFixViewWindowChange());
         pnlView.add(chkFixAspectRatio);
 
@@ -406,7 +419,7 @@ public class Main implements MouseListener, KeyListener {
             try {
                 this.mandelbrot.exportYAML(file.getAbsolutePath());
             } catch (FileNotFoundException | UnsupportedEncodingException e) {
-                new MessageDialog("Fehler ⚠",
+                new MessageDialog(this.frame, "Fehler ⚠",
                         "Während des Speichervorgangs ist ein Fehler aufgetreten. Kontaktieren Sie bitte den Entwickler. ");
             }
         }
@@ -417,8 +430,9 @@ public class Main implements MouseListener, KeyListener {
             this.setMandelbrot(Mandelbrot.fromYAMLFile(path, this.canvas.getWidth(), this.canvas.getHeight()));
             this.spnMaxIteration.setValue(this.mandelbrot.getNMax());
             this.chkFixAspectRatio.setSelected(true);
-        } catch (FileNotFoundException | YAMLException | ConfigDataException e) {
-            new MessageDialog("Fehler ⚠", "Die Datei ist beschädigt und konnte daher nicht geöffnet werden. ");
+        } catch (FileNotFoundException | YAMLException | MandelbrotConfigException e) {
+            new MessageDialog(this.frame, "Fehler ⚠",
+                    "Die Datei ist beschädigt und konnte daher nicht geöffnet werden. ");
         }
         this.onWindowResized();
         this.canvas.repaint();
@@ -437,7 +451,7 @@ public class Main implements MouseListener, KeyListener {
     }
 
     private void onExportImage() {
-        new SaveDialog(this.mandelbrot);
+        new SaveDialog(this.frame, this.mandelbrot);
         if (!this.mandelbrot.isBuilt()) {
             this.mandelbrot = new Mandelbrot(this.mandelbrot);
             this.canvas.repaint();
@@ -456,9 +470,10 @@ public class Main implements MouseListener, KeyListener {
             new Exception("Not EventDispatchThread").printStackTrace();
         // At this point we are on the Swing UI Thread
 
-        if (!this.chkFixAspectRatio.isSelected()) {
+
+    /*     if (!this.chkFixAspectRatio.isSelected()) {
             this.setMandelbrot(this.mandelbrot.extendAreaToImageSize());
-        }
+        } */
 
         // Configure rendering hints
         RenderingHints rh = new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -477,19 +492,24 @@ public class Main implements MouseListener, KeyListener {
         }
 
         if (!this.mandelbrot.isBuilding() && !this.mandelbrot.isBuilt()) {
-            this.mandelbrot.build((int percentage) -> {
-                // On building progress
-                this.progressBar.setValue((int) percentage);
-                this.lblProgress.setText((int) percentage + "% berechnet   ");
-            }, () -> {
-                if (!this.mandelbrot.isBuilt())
-                    return;
-                // When building is done
-                this.mandelbrotDisplayed = this.mandelbrot;
-                this.areaImage = this.mandelbrotDisplayed.getAreaImage();
+            try {
+                this.mandelbrot.build((Integer percentage) -> {
+                    // On building progress
+                    this.progressBar.setValue((int) percentage);
+                    this.lblProgress.setText((int) percentage + "% berechnet   ");
+                }, () -> {
+                    if (!this.mandelbrot.isBuilt())
+                        return;
+                    // When building is done
+                    this.mandelbrotDisplayed = this.mandelbrot;
+                    this.areaImage = this.mandelbrotDisplayed.getAreaImage();
 
-                this.canvas.repaint();
-            });
+                    this.canvas.repaint();
+                });
+            } catch (OutOfMemoryError e) {
+                new MessageDialog(this.frame, "Fehler ⚠", "Der zugewiesene Speicher reicht nicht aus.");
+                this.mandelbrot = new Mandelbrot(mandelbrotDisplayed);
+            }
         }
     }
 
@@ -556,27 +576,16 @@ public class Main implements MouseListener, KeyListener {
     }
 
     private void onViewConfigure() {
-        new ViewWindowDialog(mandelbrot, (double[] arr) -> {
-            try {
-                this.setMandelbrot(
-                        new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), arr[0], arr[1], arr[2], arr[3],
-                                mandelbrot.getNMax(), mandelbrot.getInnerColor(), mandelbrot.getColorGradient()));
-            } catch (Exception e) {
-                new MessageDialog("Fehler ⚠", "Das View-Window ist zu klein oder negativ. Überprüfen Sie bitte ihre Eingaben! ");
-            }
-
+        new ViewWindowDialog(this.frame, mandelbrot, (m) -> {
+            this.setMandelbrot(m);
             this.chkFixAspectRatio.setSelected(true);
             frame.getComponentListeners()[0].componentResized(null);
         });
-
     }
 
     private void onColoringConfigure() {
-        new ColoringDialog(mandelbrot, (int colorInside, int[] gradient) -> {
-            // this.mandelbrot.abort();
-            this.setMandelbrot(new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), mandelbrot.getMinRe(),
-                    mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), mandelbrot.getNMax(),
-                    colorInside, gradient));
+        new ColoringDialog(this.frame, this.mandelbrot, (m) -> {
+            this.setMandelbrot(m);
             this.canvas.repaint();
         });
     }
@@ -592,17 +601,29 @@ public class Main implements MouseListener, KeyListener {
             this.spnMaxIteration.setValue(0);
             return;
         }
-        this.setMandelbrot(new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), mandelbrot.getMinRe(),
-                mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), nMax, mandelbrot.getInnerColor(),
-                mandelbrot.getColorGradient()));
-        this.canvas.repaint();
+        if (nMax >= Integer.MAX_VALUE) {
+            new MessageDialog(this.frame, "Achtung ⚠", "Die maximale Anzahl an Iterationen nMax ist zu groß! ");
+            this.spnMaxIteration.setValue(this.mandelbrotDisplayed.getNMax());
+            return;
+        }
+
+        try {
+            this.setMandelbrot(new Mandelbrot(this.canvas.getWidth(), this.canvas.getHeight(), mandelbrot.getMinRe(),
+                    mandelbrot.getMinIm(), mandelbrot.getMaxRe(), mandelbrot.getMaxIm(), nMax,
+                    mandelbrot.getInnerColor(), mandelbrot.getColorGradient()));
+            this.canvas.repaint();
+        } catch (OutOfMemoryError e) {
+            new MessageDialog(this.frame, "Achtung ⚠", "Die maximale Anzahl an Iterationen nMax ist zu groß! ");
+            this.spnMaxIteration.setValue(this.mandelbrotDisplayed.getNMax());
+        }
+
     }
 
     private void onZoomIn() {
         try {
             this.setMandelbrot(this.mandelbrot.zoom(cursorRe, cursorIm, 2.0));
         } catch (Exception e) {
-            new MessageDialog("Achtung ⚠",
+            new MessageDialog(this.frame, "Achtung ⚠",
                     "Sie haben die maximale Zoomtiefe erreicht! Weiteres Hineinzoomen ist nicht möglich. ");
         }
         this.canvas.repaint();
@@ -646,7 +667,7 @@ public class Main implements MouseListener, KeyListener {
                 this.cursorRe = Double.parseDouble(this.txfCursorRe.getText());
                 this.cursorIm = Double.parseDouble(this.txfCursorIm.getText());
             } catch (Exception e) {
-                new MessageDialog("Fehler ⚠",
+                new MessageDialog(this.frame, "Fehler ⚠",
                         "Die Cursor-Werte sind ungültig. Bitte überprüfen Sie ihre Eingaben! ");
                 this.putCursor(this.cursorRe, this.cursorIm);
             }

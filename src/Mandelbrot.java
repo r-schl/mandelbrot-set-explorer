@@ -20,6 +20,8 @@ import javax.swing.SwingWorker;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.error.YAMLException;
 
+import throwables.MandelbrotConfigException;
+
 public class Mandelbrot {
     private static final String OUT_OF_MEMORY_ERR = "\n>> An OutOfMemoryError occured. Please reduce the image size and try again. <<";
     private static final int PROGRESS_BAR_WIDTH = 30;
@@ -82,7 +84,7 @@ public class Mandelbrot {
     }
 
     public Mandelbrot(Map<String, Object> config, int fullWidth, int fullHeight)
-            throws ConfigDataException, IllegalArgumentException {
+            throws MandelbrotConfigException, IllegalArgumentException {
         try {
             this.fullWidth = fullWidth;
             this.fullHeight = fullHeight;
@@ -105,7 +107,7 @@ public class Mandelbrot {
             if (e instanceof IllegalArgumentException) {
                 throw e;
             } else
-                throw new ConfigDataException("YAML Data was corrupt or not complete");
+                throw new MandelbrotConfigException("YAML Data was corrupt or not complete");
         }
     }
 
@@ -261,7 +263,6 @@ public class Mandelbrot {
         return this.areaImage;
     }
 
-
     public int[] getBackgroundPattern() {
         int[] pattern = new int[this.fullWidth * this.fullHeight];
         int s = 7;
@@ -311,7 +312,7 @@ public class Mandelbrot {
         this.fullImage = new BufferedImage(this.fullWidth, this.fullHeight, BufferedImage.TYPE_INT_RGB);
         this.fullImage.setRGB(0, 0, this.fullWidth, this.fullHeight, this.getFullRGBArray(), 0, this.fullWidth);
         return this.fullImage;
-    }     
+    }
 
     public Mandelbrot extendAreaToImageSize() {
 
@@ -462,7 +463,7 @@ public class Mandelbrot {
      * 
      * @param path export path
      */
-    public void exportImage(String path) {
+    public void exportImage(String path) throws OutOfMemoryError {
         try {
             try {
                 ImageIO.write(this.getFullImage(), "jpg", new File(path));
@@ -470,12 +471,11 @@ public class Mandelbrot {
                 var5.printStackTrace();
             }
         } catch (OutOfMemoryError err) {
-            System.out.println(OUT_OF_MEMORY_ERR);
-            System.exit(-1);
+            throw new OutOfMemoryError("Not enough allocated storage");
         }
     }
 
-    public void saveAreaAsPicture(String path) {
+    public void saveAreaAsPicture(String path) throws OutOfMemoryError {
         try {
             try {
                 ImageIO.write(this.getAreaImage(), "jpg", new File(path));
@@ -483,8 +483,7 @@ public class Mandelbrot {
                 var5.printStackTrace();
             }
         } catch (OutOfMemoryError err) {
-            System.out.println(OUT_OF_MEMORY_ERR);
-            System.exit(-1);
+            throw new OutOfMemoryError("Not enough allocated storage");
         }
     }
 
@@ -494,7 +493,7 @@ public class Mandelbrot {
         }, onFinish);
     }
 
-    public void build(final IntegerRunnable onProgress, final Runnable onFinish) {
+    public void build(final Executable<Integer> onProgress, final Runnable onFinish) throws OutOfMemoryError {
 
         // make sure we are on the Swing UI Thread
         if (!SwingUtilities.isEventDispatchThread()) {
@@ -513,11 +512,14 @@ public class Mandelbrot {
         }
 
         this.startTime = System.currentTimeMillis();
-        this.iterationData = new int[this.areaWidth * this.areaHeight];
-        this.workerThreads = new SwingWorker[this.NUMTHREADS];
+        try {
+            this.iterationData = new int[this.areaWidth * this.areaHeight];
+            this.workerThreads = new SwingWorker[this.NUMTHREADS];
+        } catch (OutOfMemoryError err) {
+            throw new OutOfMemoryError("Not enough allocated storage");
+        }
         this.percentageCompleted = 0;
         this.rowsCompleted = 0;
-
         this.isBuilding = true;
 
         for (int i = 0; i < this.NUMTHREADS; i++) {
@@ -532,38 +534,42 @@ public class Mandelbrot {
                 int yRange;
 
                 protected int[] doInBackground() {
+                    try {
+                        this.xBegin = 0;
+                        this.xEnd = areaWidth;
+                        this.xRange = this.xEnd - this.xBegin;
+                        this.yBegin = k * (areaHeight / NUMTHREADS);
+                        this.yEnd = k * (areaHeight / NUMTHREADS) + areaHeight / NUMTHREADS;
 
-                    this.xBegin = 0;
-                    this.xEnd = areaWidth;
-                    this.xRange = this.xEnd - this.xBegin;
-                    this.yBegin = k * (areaHeight / NUMTHREADS);
-                    this.yEnd = k * (areaHeight / NUMTHREADS) + areaHeight / NUMTHREADS;
+                        if (k == NUMTHREADS - 1)
+                            this.yEnd = areaHeight;
 
-                    if (k == NUMTHREADS - 1)
-                        this.yEnd = areaHeight;
+                        this.yRange = this.yEnd - this.yBegin;
 
-                    this.yRange = this.yEnd - this.yBegin;
+                        int[] part = new int[this.xRange * this.yRange];
 
-                    int[] part = new int[this.xRange * this.yRange];
+                        for (int row = 0; row < this.yRange; ++row) {
+                            for (int col = 0; col < this.xRange; ++col) {
+                                if (!isBuilding)
+                                    return null;
+                                double px = (double) (this.xBegin + col);
+                                double py = (double) (this.yBegin + row);
+                                double zOriginRe = minRe;
+                                double zOriginIm = maxIm;
+                                double s = Math.abs(maxRe - minRe) / (double) areaWidth;
+                                double cRe = zOriginRe + s * px;
+                                double cIm = zOriginIm - s * py;
+                                part[row * this.xRange + col] = iterate(cRe, cIm);
+                            }
 
-                    for (int row = 0; row < this.yRange; ++row) {
-                        for (int col = 0; col < this.xRange; ++col) {
-                            if (!isBuilding)
-                                return null;
-                            double px = (double) (this.xBegin + col);
-                            double py = (double) (this.yBegin + row);
-                            double zOriginRe = minRe;
-                            double zOriginIm = maxIm;
-                            double s = Math.abs(maxRe - minRe) / (double) areaWidth;
-                            double cRe = zOriginRe + s * px;
-                            double cIm = zOriginIm - s * py;
-                            part[row * this.xRange + col] = iterate(cRe, cIm);
+                            this.publish(new Integer[] { row });
                         }
 
-                        this.publish(new Integer[] { row });
+                        return part;
+                    } catch (Throwable t) {
+                        System.out.println(t);
+                        throw new OutOfMemoryError("Not enough allocated storage");
                     }
-
-                    return part;
                 }
 
                 protected void process(List<Integer> rows) {
@@ -573,7 +579,7 @@ public class Mandelbrot {
                         percentageCompleted = (int) Math.round(rowsCompleted * 100.0D / (double) areaHeight);
                         if (lastPercentage != percentageCompleted) {
                             onProgress.run(percentageCompleted);
-                        } 
+                        }
                     }
                 }
 
@@ -589,8 +595,7 @@ public class Mandelbrot {
                     } catch (ExecutionException | InterruptedException var3) {
                         String message = var3.getCause().getMessage();
                         if (message.equals("Java heap space")) {
-                            System.out.println(OUT_OF_MEMORY_ERR);
-                            System.exit(-1);
+                            throw new OutOfMemoryError("Not enough allocated storage");
                         }
                     }
 
@@ -608,6 +613,7 @@ public class Mandelbrot {
             };
             this.workerThreads[i].execute();
         }
+
     }
 
     public void abort() {
@@ -758,20 +764,16 @@ public class Mandelbrot {
     }
 
     public static Mandelbrot fromYAMLFile(String path, int fullWidth, int fullHeight)
-            throws FileNotFoundException, ConfigDataException {
+            throws FileNotFoundException, MandelbrotConfigException {
         Yaml yaml = new Yaml();
         Map<String, Object> yamlData = null;
         InputStream inputStream = new FileInputStream(path);
         try {
             yamlData = (Map) yaml.load(inputStream);
         } catch (Exception e) {
-            throw new ConfigDataException("The yaml file was not found or the YAML data was corrupt");
+            throw new MandelbrotConfigException("The yaml file was not found or the YAML data was corrupt");
         }
         return new Mandelbrot(yamlData, fullWidth, fullHeight);
     }
 
-    @FunctionalInterface
-    interface IntegerRunnable {
-        void run(int val);
-    }
 }

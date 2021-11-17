@@ -1,11 +1,7 @@
-import static javax.swing.BorderFactory.createEtchedBorder;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Toolkit;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
 
 import javax.swing.JButton;
 import javax.swing.JColorChooser;
@@ -13,7 +9,6 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EtchedBorder;
-import javax.swing.*;
 
 public class ColorPickerDialog extends JDialog {
 

@@ -13,6 +13,7 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
+import javax.swing.JFrame;
 import javax.swing.JTextArea;
 import javax.swing.SpringLayout;
 import javax.swing.UIManager;
@@ -34,10 +35,11 @@ public class ColoringDialog extends JDialog {
         JPanel[] pnlsColorGradient;
 
         Mandelbrot mandelbrot;
-        OneIntAndIntArrExecutable onConfirm;
+        Executable<Mandelbrot> onConfirm;
 
-        public ColoringDialog(Mandelbrot mandelbrot, OneIntAndIntArrExecutable onConfirm) {
+        public ColoringDialog(JFrame frame, Mandelbrot mandelbrot, Executable<Mandelbrot> onConfirm) {
 
+                super(frame, true);
                 this.mandelbrot = mandelbrot;
                 this.onConfirm = onConfirm;
 
@@ -213,7 +215,12 @@ public class ColoringDialog extends JDialog {
                 for (int a = 0; a < pnlsColorGradient.length; a++)
                         if (pnlsColorGradient[a].isOpaque())
                                 newGradient[b++] = pnlsColorGradient[a].getBackground().getRGB();
-                onConfirm.run(pnlInnerColor.getBackground().getRGB(), newGradient);
+
+                Mandelbrot newMandelbrot = new Mandelbrot(mandelbrot.getFullWidth(), mandelbrot.getFullHeight(),
+                                mandelbrot.getMinRe(), mandelbrot.getMinIm(), mandelbrot.getMaxRe(),
+                                mandelbrot.getMaxIm(), mandelbrot.getNMax(), pnlInnerColor.getBackground().getRGB(),
+                                newGradient);
+                onConfirm.run(newMandelbrot);
                 dispose();
         }
 

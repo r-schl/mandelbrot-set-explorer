@@ -8,6 +8,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
@@ -35,9 +36,14 @@ public class ViewWindowDialog extends JDialog {
     JLabel lblMaxIm;
 
     Mandelbrot mandelbrot;
-    DoubleArrExecutable onConfirm;
+    Executable<Mandelbrot> onConfirm;
+    JFrame frame;
 
-    public ViewWindowDialog(Mandelbrot mandelbrot, DoubleArrExecutable onConfirm) {
+    public ViewWindowDialog(JFrame frame, Mandelbrot mandelbrot, Executable<Mandelbrot> onConfirm) {
+
+        super(frame, true);
+
+        this.frame = frame;
 
         this.mandelbrot = mandelbrot;
         this.onConfirm = onConfirm;
@@ -152,22 +158,28 @@ public class ViewWindowDialog extends JDialog {
 
     private void onNext() {
 
+        double minRe;
+        double minIm;
+        double maxRe;
+        double maxIm;
+
         try {
-            double minRe = Double.parseDouble(txfMinRe.getText());
-            double minIm = Double.parseDouble(txfMinIm.getText());
-            double maxRe = Double.parseDouble(txfMaxRe.getText());
-            double maxIm = Double.parseDouble(txfMaxIm.getText());
-            double lenRe = maxRe - minRe;
-            double lenIm = maxIm - minIm;
-            if (lenRe < 0 || Math.abs(lenRe) < DIFF_EQUAL || lenIm < 0 || Math.abs(lenIm) < DIFF_EQUAL) {
-                new MessageDialog("Fehler ⚠",
-                        "Das View-Window ist zu klein oder negativ. Überprüfen Sie bitte ihre Eingaben!");
-            } else {
-                onConfirm.run(new double[] { minRe, minIm, maxRe, maxIm });
+            minRe = Double.parseDouble(txfMinRe.getText());
+            minIm = Double.parseDouble(txfMinIm.getText());
+            maxRe = Double.parseDouble(txfMaxRe.getText());
+            maxIm = Double.parseDouble(txfMaxIm.getText());
+            try {
+                Mandelbrot newMandelbrot = new Mandelbrot(mandelbrot.getFullWidth(), mandelbrot.getFullHeight(), minRe,
+                        minIm, maxRe, maxIm, mandelbrot.getNMax(), mandelbrot.getInnerColor(),
+                        mandelbrot.getColorGradient());
+                onConfirm.run(newMandelbrot);
                 dispose();
+            } catch (IllegalArgumentException e) {
+                new MessageDialog(this.frame, "Fehler ⚠",
+                        "Das View-Window ist zu klein oder negativ. Überprüfen Sie bitte ihre Eingaben!");
             }
-        } catch (Exception e) {
-            new MessageDialog("Fehler ⚠", "Die Werte sind ungültig. Bitte überprüfen Sie ihre Eingaben!");
+        } catch (NumberFormatException e) {
+            new MessageDialog(this.frame, "Fehler ⚠", "Die Werte sind ungültig. Bitte überprüfen Sie ihre Eingaben!");
         }
 
     }

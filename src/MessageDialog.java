@@ -11,7 +11,7 @@ public class MessageDialog extends JDialog {
 
     JButton btn;
 
-    public MessageDialog(String title, String message) {
+    public MessageDialog(JFrame frame, String title, String message) {
 
         this.setTitle(title);
         this.setResizable(false);
