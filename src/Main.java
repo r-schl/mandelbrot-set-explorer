@@ -84,7 +84,7 @@ public class Main implements MouseListener, KeyListener {
     double zoomFactor = 1;
     double buildPercentage = 0;
 
-    final String FRAME_TITLE = "Mandelbrot Fraktal-Generator";
+    final String FRAME_TITLE = "Mandelbrot Set Explorer";
     final String VIEW_PANEL_TITLE = "View-Window";
     final String CURSOR_PANEL_TITLE = "Cursor c";
 
@@ -400,7 +400,7 @@ public class Main implements MouseListener, KeyListener {
         this.spnMaxIteration.setValue(mandelbrot.getNMax());
         this.lblInfoAboutC.setText("c ∈ 𝕄 (" + this.mandelbrot.getNMax() + "/" + this.mandelbrot.getNMax() + ")");
 
-        lblStatus.setText("   Robert Schlosshan | Mandelbrot Fraktal-Generator v1.0   ("
+        lblStatus.setText("   Robert Schlosshan | Mandelbrot Set Explorer v1.0   ("
                 + Runtime.getRuntime().availableProcessors() + " Prozessoren)");
 
         putCursor(0, 0);
