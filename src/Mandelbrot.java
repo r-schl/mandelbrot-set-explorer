@@ -32,6 +32,7 @@ public class Mandelbrot {
 
     public boolean useBackgroundPattern = true;
     public int backgroundColor = 0xFFFFFF;
+    
     public int patternColor1 = 0xcfcfcf;
     public int patternColor2 = 0x999999;
 

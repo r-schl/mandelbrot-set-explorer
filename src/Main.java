@@ -524,7 +524,6 @@ public class Main implements MouseListener, KeyListener {
     private void updateZoomFactorInfo() {
         double factor = (3.0D / this.mandelbrotDisplayed.getRangeIm());
         this.zoomFactor = (double) Math.round(factor * 10000000d) / 10000000d;
-        System.out.println(factor);
         this.lblProgress.setText("Zoom: " + zoomFactor + "  " + buildPercentage + "% berechnet   ");
     }
 
