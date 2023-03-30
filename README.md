@@ -4,7 +4,7 @@ The Mandelbrot set $\mathbb {M}$ is a set of complex numbers $c \in \mathbb {C}$
 
 This application runs on Java 11.0.6. 
 
-### What is $n_{max}$ and how is $\mathbb {M} calculated?
+### What is $n_{max}$ and how is $\mathbb {M}$ calculated?
 
 To a certain extent, the number $n_{max} \in \mathbb {N}$ determines the accuracy of the calculation. 
 
