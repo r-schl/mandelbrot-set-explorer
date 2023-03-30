@@ -6,7 +6,7 @@ This application runs on Java 11.0.6.
 
 ### What is $n_{max}$?
 
-To determine whether a $c \in \mathbb {M}$, it must be checked whether the sequence $\(z_{c,n}\)$ remains bounded. To do so, this application calculates the sequence one after the other up to the $n_{max}$ th element in the sequence. 
+To determine whether a $c \in \mathbb {M}$, it must be checked whether the sequence $\(z_{c,n}\)$ remains bounded. To do so, this application calculates the sequence starting from $z_{c,0}$ up to $z_{c,n_{max}}$. 
 
 ### How to use this application
 
