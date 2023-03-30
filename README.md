@@ -15,19 +15,3 @@ Let $c \in \mathbb {C}$. To find out whether $c \in \mathbb {M}$, it must be che
 Let $c \in {C}$. To visualize $\mathbb {M}$ as a mathematical set, only two colors are needed: one for $c \in \mathbb {M}$ and one for $c \notin \mathbb {M}$. But a two-tone image is boring. Therefore in this application one can specify one color for all $c$ for which $c \in \mathbb {M}$ is assumed and up to five colors that form a color gradient for $c \notin \mathbb {M}$. 
 
 Let $c \notin \mathbb {M}$ and let $z_{c,k} > 2$ with $k \in \mathbb {N}$ be the first element in the sequence which absolute value is greater than 2. Then, according to the algorithm described above, $z_{c,k}$ is the last number that got calculated while iterating $\(z_{c,n}\)$ from $z=0$. Depending on where $k$ is between $0$ and $n_{max}$, a color is picked from the gradient. As a result, the degree of divergence of $\(z_{c,n}\)$ the can be seen in the image. 
-
-### How to use this application
-
-#### Overview
-
-The program window is divided into three parts. At the top of the window is the menu bar in which all control elements of the program are located. Below that is the screen, which takes up the most space. There, the part of the Mandelbrot set within the view port are displayed. A status bar can be seen at the bottom of the window. It displays information about the program, the progress of the calculation and the current zoom factor. 
-
-#### Menu bar
-
-The first area of the menu bar allows saving the settings made by the user. This includes the view port, the colors of the color palette and the maximum number of iterations $n_{max}$. This saves the project for later use. A previously saved file can also be loaded again. In this case the settings described in the file are transferred to the program. In addition to the first two buttons, there is another button in this area that allows the user to save what is displayed as an image. A dialog window will then open in which the size of the image and the storage location must be specified by the user. 
-
-In a second area, by clicking on the button labeled "Bearbeiten" the coloring of the Mandelbrot set can be configured. A dialog window will appear in which both a color for the Mandelbrot set itself can be specified, and up to five other colors can also be specified, which make up a color gradient for all points outside of the set. Not all five colors have to be set. For example, if only one color is specified for the gradient, a two-tone image emerges. 
-
-The maximum number of iterations $n_{max}$ can be set in the next area. If this value is gradually increased, it is easy to observe how the accuracy of calculating of the Mandelbrot set increases. 
-
-In the fourth area of the menu bar, settings can be made that affect the view port. The values $c_{min}$ and $c_{max}$ that determine the view port can be edited in a dialog window that one can open by clicking on the button with the inscription "Ändern". The smaller square buttons allow you to zoom in, zoom out and to set the view port to default. Next to it there is a checkbox which determines whether if the window is resized, the view port should remain locked or change to accommodate the resizing. 
