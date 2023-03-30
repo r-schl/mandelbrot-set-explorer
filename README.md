@@ -14,7 +14,7 @@ Let $c \in \mathbb {C}$. To find out whether $c \in \mathbb {M}$, it must be che
 
 Let $c \in {C}$. To visualize $\mathbb {M}$ as a mathematical set, only two colors are needed: one for $c \in \mathbb {M}$ and one for $c \notin \mathbb {M}$. But a two-tone image is boring. Therefore in this application one can specify one color for all $c$ for which $c \in \mathbb {M}$ is assumed and up to five colors that from a color gradient for $c \notin \mathbb {M}$. 
 
-Let $c \notin \mathbb {M}$ and let $z_{c,k} > 2$ with $k \in \mathbb {N}$ be first element in the sequence that is greater than 2. 
+Let $c \notin \mathbb {M}$ and let $z_{c,k} > 2$ with $k \in \mathbb {N}$ be first element in the sequence that is greater than 2. Then $z_{c,k} > 2$ is the last number that got calculated while iterating $\(z_{c,n}\)$ from $z=0$. 
 
 
 
