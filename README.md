@@ -6,7 +6,7 @@ This application runs on Java 11.0.6.
 
 ### What is $n_{max}$?
 
-To determine whether a $c$ is in the Mandelbrot set, it must be checked whether the sequence $f_c(z)=z^2+c$ remains bounded. To do so, this application calculates the sequence one after the other up to the $n_{max}$th element in the sequence. 
+To determine whether a $c$ is in the Mandelbrot set, it must be checked whether the sequence $f_c(z)=z^2+c$ remains bounded. To do so, this application calculates the sequence one after the other up to the $n_{max}$ th element in the sequence. 
 
 ### How to use this application
 
