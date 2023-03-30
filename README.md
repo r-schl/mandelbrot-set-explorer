@@ -4,6 +4,10 @@ The Mandelbrot set is a set of complex numbers $c$ for which the function $f_c(z
 
 This application runs on Java 11.0.6. 
 
+### What is $n_{max}$?
+
+
+
 ### How to use this application
 
 #### Overview
