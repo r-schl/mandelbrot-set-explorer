@@ -8,7 +8,7 @@ This application runs on Java 11.0.6.
 
 To a certain extent, the number $n_{max} \in \mathbb {N}$ determines the accuracy of the calculation. 
 
-To find out whether a $c \in \mathbb {M}$, it must be checked whether the sequence $\(z_{c,n}\)$ remains bounded. To do so, this application tries to calculate the sequence starting from $z_{c,0}$ up to $z_{c,n_{max}}$. If during this calculation there where any $n < n_{max}$ so that $|z_{c,n}| > 2$, this algorithm will terminate prematurely. Because in that case it is proven that $\(z_{c,n}\)$ will definitely diverge to infinity (for proof, see [explanation of Mike Hurley](http://mrob.com/pub/muency/escaperadius.html)). On the other hand if this calculation reaches $z_{c,n_{max}}$, meaning $|z_{c,n}| \leq 2$ for all $n < n_{max}), $this application will assume that $c \in \mathbb {M}$. 
+To find out whether a $c \in \mathbb {M}$, it must be checked whether the sequence $\(z_{c,n}\)$ remains bounded. To do so, this application tries to calculate the sequence starting from $z_{c,0}$ up to $z_{c,n_{max}}$. If during this calculation there where any $n < n_{max}$ so that $|z_{c,n}| > 2$, this algorithm will terminate prematurely. Because in that case it is proven that $\(z_{c,n}\)$ will definitely diverge to infinity (for proof, see [explanation of Mike Hurley](http://mrob.com/pub/muency/escaperadius.html)). On the other hand if this calculation reaches $z_{c,n_{max}}$, meaning $|z_{c,n}| \leq 2$ for all $n < n_{max}), this application will assume that $c \in \mathbb {M}$. 
 
 But because there are some $c \notin \mathbb {M}$ with which $\(|z_{c,n}|\)$ will not be greater than 2 until very late. 
 
