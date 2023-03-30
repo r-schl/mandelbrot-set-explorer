@@ -1,6 +1,6 @@
 # Mandelbrot Set Explorer
 #### This program was created as part of a school assignment on the topic of [calculation and visualization of the Mandelbrot set](https://github.com/r-schl/mandelbrot-set-paper)
-The Mandelbrot set $\mathbb {M}$ (see [Wikipedia](https://en.wikipedia.org/wiki/Mandelbrot_set))  is a set of complex numbers $c \in \mathbb {C}$ for which the sequence $\(z_{c,n}\)$ with $z_{c,n}=z^2+c$ does not diverge to infinity when iterated from $z=0$. This is a program that visualizes the Mandelbrot set. It allows the user to zoom into the set, change the coloring and save images of the set, among other things. 
+The Mandelbrot set $\mathbb {M}$ (see [Wikipedia](https://en.wikipedia.org/wiki/Mandelbrot_set))  is a set of complex numbers $c \in \mathbb {C}$ for which the sequence $\(z_{c,n}\)$ with $z_{c,n+1}=z_{c,n}^2+c$ does not diverge to infinity when iterated from $z_{c,0}=0$. This is a program that visualizes the Mandelbrot set. It allows the user to zoom into the set, change the coloring and save images of the set, among other things. 
 
 This application runs on Java 11.0.6. 
 
@@ -14,4 +14,4 @@ Let $c \in \mathbb {C}$. To find out whether $c \in \mathbb {M}$, it must be che
 
 Let $c \in {C}$. To visualize $\mathbb {M}$ as a mathematical set, only two colors are needed: one for $c \in \mathbb {M}$ and one for $c \notin \mathbb {M}$. But a two-tone image is boring. Therefore in this application one can specify one color for all $c$ for which $c \in \mathbb {M}$ is assumed and up to five colors that form a color gradient for $c \notin \mathbb {M}$. 
 
-Let $c \notin \mathbb {M}$ and let $z_{c,k} > 2$ with $k \in \mathbb {N}$ be the first element in the sequence which absolute value is greater than 2. Then, according to the algorithm described above, $z_{c,k}$ is the last number that got calculated while iterating $\(z_{c,n}\)$ from $z=0$. Depending on where $k$ is between $0$ and $n_{max}$, a color is picked from the gradient. As a result, the degree of divergence of $\(z_{c,n}\)$ the can be seen in the image. 
+Let $c \notin \mathbb {M}$ and let $z_{c,k} > 2$ with $k \in \mathbb {N}$ be the first element in the sequence which absolute value is greater than 2. Then, according to the algorithm described above, $z_{c,k}$ is the last number that got calculated while iterating $\(z_{c,n}\)$ from $z_{c,0}=0$. Depending on where $k$ is between $0$ and $n_{max}$, a color is picked from the gradient. As a result, the degree of divergence of $\(z_{c,n}\)$ the can be seen in the image. 
